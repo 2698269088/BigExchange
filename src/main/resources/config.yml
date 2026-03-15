@@ -1,0 +1,117 @@
+# BigExchange 配置文件
+# 随机兑换码生成插件
+
+# 数据库配置
+database:
+  # 是否启用数据库（必须为 true）
+  enabled: true
+  # 数据库类型：sqlite 或 mysql
+  type: "sqlite"
+  # SQLite 数据库文件路径（仅在 type 为 sqlite 时使用）
+  path: "plugins/BigExchange/codes.db"
+  # MySQL 配置（仅在 type 为 mysql 时使用）
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "bigexchange"
+    username: "root"
+    password: "password"
+    # 连接池配置
+    pool:
+      min-size: 5
+      max-size: 20
+      max-lifetime: 1800000
+    # 表前缀
+    table-prefix: "be_"
+  # 备份配置
+  backup:
+    # 是否启用双数据库备份（SQLite 和 MySQL 同时使用）
+    dual-backup: false
+    # 自动备份间隔（分钟，0 表示不自动备份）
+    auto-backup-interval: 60
+
+# 兑换码格式配置
+code:
+  format:
+    # 第一部分长度（分隔符前）
+    first-length: 6
+    # 第二部分长度（分隔符后）
+    second-length: 10
+    # 分隔符
+    separator: "-"
+  # 有效期配置
+  validity:
+    # 默认有效期天数（-1 表示永久有效）
+    default-days: 30
+    # 自动过期检查间隔（分钟，0 表示禁用自动检查）
+    auto-check-interval: 60
+  # 安全配置
+  security:
+    # 是否启用加密哈希
+    encrypt: true
+    # 哈希算法
+    algorithm: "SHA-256"
+
+# 消息配置
+# 支持颜色代码 (&a, &b, &c 等)
+messages:
+  # 消息前缀
+  prefix: "&8[&6BigExchange&8] "
+  # 成功消息
+  success: "&a操作成功！"
+  # 错误消息
+  error: "&c操作失败！"
+  # 兑换码生成
+  code-generated: "&7已生成兑换码：&b%code% &7，可用次数：%uses%，有效期：%validity%"
+  # 兑换成功
+  code-redeemed: "&a 兑换成功！获得奖励"
+  # 无效兑换码
+  code-invalid: "&c 无效的兑换码"
+  # 过期兑换码
+  code-expired: "&c 兑换码已过期"
+  # 无剩余次数
+  code-no-uses: "&c 该兑换码已无可用次数"
+  # 管理员强制激活
+  admin-force-activated: "&a强制激活兑换码成功"
+  # 达到使用限制（详细提示）
+  code-limit-reached: "&c该兑换码已达到最大使用限制（%used%/%total% 次）"
+  # 剩余次数提示
+  code-remaining-uses: "&7 该兑换码剩余可用次数：&e%remaining%&7/&e%total%"
+  # 有效期剩余时间提示
+  code-validity-remaining: "&7 有效期剩余：&e%remaining_time%"
+
+# 基岩版表单配置
+form:
+  # 是否启用基岩版表单 UI（true/false）
+  enabled: true
+  # 表单类型：geyser (国际版 Geyser/Floodgate)
+  # 插件会自动检测 Floodgate，如果没有安装则使用聊天栏输入
+  type: "geyser"
+  # 表单标题（支持颜色代码）
+  redeem-title: "&6 兑换码兑换"
+  # 表单内容（已废弃，使用输入框代替）
+  redeem-content: "&e 请输入您的兑换码：\n&7 格式：XXXXXX-XXXXXXXXXX"
+  # 输入框占位符
+  redeem-placeholder: "XXXXXX-XXXXXXXXXX"
+  # 成功按钮（已废弃，BaseAPI 不显示按钮）
+  redeem-button-confirm: "&a 确认兑换"
+  # 取消按钮（已废弃，BaseAPI 不显示按钮）
+  redeem-button-cancel: "&c 取消"
+  # 玩家类型检测
+  # auto: 自动检测（推荐）
+  # force-form: 强制对所有玩家显示表单（需要客户端支持）
+  # force-chat: 强制使用聊天栏输入
+  detection-mode: "auto"
+
+# 日志配置
+logging:
+  # 日志级别：INFO, WARNING, SEVERE, FINE, FINER, FINEST
+  # INFO: 普通信息（默认）
+  # WARNING: 警告信息
+  # SEVERE: 严重错误
+  # FINE: 调试信息（推荐用于排查问题）
+  # FINER: 详细调试信息（包含所有 FINE 信息）
+  # FINEST: 最详细调试信息（包含所有 FINER 信息）
+
+  # 如果基岩版玩家无法打开表单，建议设置为 FINE 或 FINER 查看详细日志
+  level: "INFO"

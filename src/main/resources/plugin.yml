@@ -1,0 +1,28 @@
+name: BigExchange
+version: '1.1'
+main: top.mcocet.bigExchange.BigExchange
+api-version: '1.18'
+description: 随机兑换码生成插件，支持加密认证、SQLite MySQL 数据库管理
+author: mcocet
+website: top.mcocet
+
+softdepend: [Geyser-Spigot, floodgate]
+
+commands:
+  bigexchange:
+    description: 兑换码管理命令
+    usage: /<command> [generate|delete|modify|list|info|history|activate|reload]
+    aliases: [be, bex]
+    permission: bigexchange.admin
+  redeem:
+    description: 兑换码兑换命令
+    usage: /<command> [兑换码]
+    aliases: [cdkey, code]
+
+permissions:
+  bigexchange.admin:
+    description: 访问所有管理员命令
+    default: op
+  bigexchange.redeem:
+    description: 使用兑换码
+    default: true
