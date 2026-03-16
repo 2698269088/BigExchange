@@ -6,7 +6,7 @@
 
     <groupId>top.mcocet</groupId>
     <artifactId>BigExchange</artifactId>
-    <version>1.1</version>
+    <version>1.2</version>
     <packaging>jar</packaging>
 
     <name>BigExchange</name>
@@ -69,6 +69,10 @@
             <id>opencollab-snapshot</id>
             <url>https://repo.opencollab.dev/main/</url>
         </repository>
+        <repository>
+            <id>codemc-repo</id>
+            <url>https://repo.codemc.io/repository/maven-public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -95,6 +99,12 @@
             <artifactId>cumulus</artifactId>
             <version>1.1.1</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.wesjd</groupId>
+            <artifactId>anvilgui</artifactId>
+            <version>1.10.5-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>

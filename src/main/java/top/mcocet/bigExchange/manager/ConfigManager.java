@@ -164,6 +164,14 @@ public class ConfigManager {
         return config.getBoolean("form.enabled", false);
     }
 
+    /**
+     * 检查是否启用 Java 版 AnvilGUI
+     * @return true 表示启用
+     */
+    public boolean isAnvilGUIEnabled() {
+        return config.getBoolean("form.anvil-gui-enabled", true);
+    }
+
     public String getFormType() {
         return config.getString("form.type", "geyser");
     }

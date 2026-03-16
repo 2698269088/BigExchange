@@ -87,6 +87,11 @@ form:
   # 表单类型：geyser (国际版 Geyser/Floodgate)
   # 插件会自动检测 Floodgate，如果没有安装则使用聊天栏输入
   type: "geyser"
+  
+  # Java 版 AnvilGUI 配置
+  # 是否启用 AnvilGUI 界面（true/false）
+  # 启用后，Java 版玩家使用 /redeem 命令时会打开铁砧界面而不是聊天栏提示
+  anvil-gui-enabled: true
   # 表单标题（支持颜色代码）
   redeem-title: "&6 兑换码兑换"
   # 表单内容（已废弃，使用输入框代替）

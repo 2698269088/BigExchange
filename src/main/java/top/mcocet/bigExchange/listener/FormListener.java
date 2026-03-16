@@ -8,6 +8,7 @@ import top.mcocet.bigExchange.BigExchange;
 import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
 import top.mcocet.bigExchange.manager.LogManager;
+import top.mcocet.bigExchange.util.AnvilGUIUtil;
 
 import java.lang.reflect.Method;
 
@@ -16,29 +17,58 @@ public class FormListener implements Listener {
     private final CodeManager codeManager;
     private final ConfigManager configManager;
     private final LogManager logManager;
+    private final AnvilGUIUtil anvilGUIUtil;
 
     public FormListener(BigExchange plugin, CodeManager codeManager, ConfigManager configManager) {
         this.plugin = plugin;
         this.codeManager = codeManager;
         this.configManager = configManager;
         this.logManager = new LogManager(plugin, configManager);
+        this.anvilGUIUtil = new AnvilGUIUtil(plugin, configManager, codeManager);
     }
 
     /**
-     * 向玩家发送兑换码输入表单（仅支持国际版 Geyser/Floodgate）
+     * 向玩家发送兑换码输入表单（Java版使用AnvilGUI，基岩版使用 Floodgate 表单）
      */
     public void sendRedeemForm(Player player) {
         logManager.fine("收到玩家 " + player.getName() + " 的 /redeem 命令请求");
         
-        // 检查是否启用表单
-        if (!configManager.isFormEnabled()) {
-            logManager.warning("表单功能已禁用，使用聊天栏形式");
-            sendChatForm(player);
-            return;
+        // 检查是否为基岩版玩家
+        if (isBedrockPlayer(player)) {
+            // 基岩版玩家使用 Floodgate 表单
+            if (configManager.isFormEnabled()) {
+                sendGeyserForm(player);
+            } else {
+                sendChatForm(player);
+            }
+        } else {
+            // Java 版玩家使用AnvilGUI
+            if (configManager.isAnvilGUIEnabled()) {
+                logManager.fine("Java 版玩家 " + player.getName() + "，打开 AnvilGUI 界面");
+                anvilGUIUtil.openRedeemGUI(player);
+            } else {
+                logManager.fine("Java 版玩家 " + player.getName() + "，AnvilGUI 已禁用，使用聊天栏");
+                sendChatForm(player);
+            }
         }
+    }
     
-        // 直接使用 Geyser/Floodgate 表单
-        sendGeyserForm(player);
+    /**
+     * 检查玩家是否为基岩版玩家
+     * @param player 玩家
+     * @return 是否为基岩版玩家
+     */
+    private boolean isBedrockPlayer(Player player) {
+        try {
+            Class<?> floodgateApiClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
+            Object apiInstance = floodgateApiClass.getMethod("getInstance").invoke(null);
+            Boolean isFloodgatePlayer = (Boolean) floodgateApiClass.getMethod("isFloodgatePlayer", java.util.UUID.class)
+                    .invoke(apiInstance, player.getUniqueId());
+            return Boolean.TRUE.equals(isFloodgatePlayer);
+        } catch (Exception e) {
+            // Floodgate 不可用，默认不是基岩版玩家
+            return false;
+        }
     }
 
     /**

@@ -1,5 +1,5 @@
 name: BigExchange
-version: '1.1'
+version: '1.2'
 main: top.mcocet.bigExchange.BigExchange
 api-version: '1.18'
 description: 随机兑换码生成插件，支持加密认证、SQLite MySQL 数据库管理

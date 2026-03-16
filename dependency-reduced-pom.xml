@@ -4,7 +4,7 @@
   <groupId>top.mcocet</groupId>
   <artifactId>BigExchange</artifactId>
   <name>BigExchange</name>
-  <version>1.0</version>
+  <version>1.2</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -53,6 +53,10 @@
       <id>opencollab-snapshot</id>
       <url>https://repo.opencollab.dev/main/</url>
     </repository>
+    <repository>
+      <id>codemc-repo</id>
+      <url>https://repo.codemc.io/repository/maven-public/</url>
+    </repository>
   </repositories>
   <dependencies>
     <dependency>
@@ -68,10 +72,28 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.geysermc.floodgate</groupId>
+      <artifactId>api</artifactId>
+      <version>2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.geysermc.cumulus</groupId>
+      <artifactId>cumulus</artifactId>
+      <version>1.1.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
       <version>8.0.33</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>5.0.1</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <properties>
