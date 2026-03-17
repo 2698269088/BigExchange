@@ -251,4 +251,124 @@ public class ConfigManager {
     public int getAutoCheckInterval() {
         return config.getInt("code.validity.auto-check-interval", 60);
     }
+
+    /**
+     * 检查是否启用购买功能
+     * @return true 表示启用
+     */
+    public boolean isPurchaseEnabled() {
+        return config.getBoolean("purchase.enabled", true);
+    }
+
+    /**
+     * 获取购买价格
+     * @return 购买价格
+     */
+    public double getPurchasePrice() {
+        return config.getDouble("purchase.price", 100.0);
+    }
+
+    /**
+     * 获取购买的兑换码可用次数
+     * @return 可用次数（-1 表示无限）
+     */
+    public int getPurchaseUses() {
+        return config.getInt("purchase.uses", 1);
+    }
+
+    /**
+     * 获取购买的兑换码有效期天数
+     * @return 有效期天数（-1 表示永久）
+     */
+    public int getPurchaseValidityDays() {
+        return config.getInt("purchase.validity-days", 30);
+    }
+
+    /**
+     * 获取购买奖励命令列表
+     * @return 奖励命令列表
+     */
+    public java.util.List<String> getPurchaseRewardCommands() {
+        return config.getStringList("purchase.reward-commands");
+    }
+
+    /**
+     * 检查是否启用 Craftconomy3 扣款
+     * @return true 表示启用
+     */
+    public boolean isCraftconomy3Enabled() {
+        return config.getBoolean("craftconomy3.enabled", false);
+    }
+
+    /**
+     * 获取 Craftconomy3 数据库类型
+     * @return 数据库类型（目前仅支持 mysql）
+     */
+    public String getCraftconomy3DatabaseType() {
+        return config.getString("craftconomy3.database-type", "mysql");
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 主机地址
+     * @return 主机地址
+     */
+    public String getCraftconomy3MysqlHost() {
+        return config.getString("craftconomy3.mysql.host", "localhost");
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 端口
+     * @return 端口
+     */
+    public int getCraftconomy3MysqlPort() {
+        return config.getInt("craftconomy3.mysql.port", 3306);
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 数据库名
+     * @return 数据库名
+     */
+    public String getCraftconomy3MysqlDatabase() {
+        return config.getString("craftconomy3.mysql.database", "craftconomy3");
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 用户名
+     * @return 用户名
+     */
+    public String getCraftconomy3MysqlUsername() {
+        return config.getString("craftconomy3.mysql.username", "root");
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 密码
+     * @return 密码
+     */
+    public String getCraftconomy3MysqlPassword() {
+        return config.getString("craftconomy3.mysql.password", "password");
+    }
+
+    /**
+     * 获取 Craftconomy3 MySQL 表前缀
+     * @return 表前缀
+     */
+    public String getCraftconomy3MysqlTablePrefix() {
+        return config.getString("craftconomy3.mysql.table-prefix", "");
+    }
+
+    /**
+     * 获取 Craftconomy3 货币名称
+     * @return 货币名称
+     */
+    public String getCraftconomy3CurrencyName() {
+        return config.getString("craftconomy3.currency.name", "Coins");
+    }
+
+    /**
+     * 获取 Craftconomy3 世界组名称
+     * @return 世界组名称
+     */
+    public String getCraftconomy3WorldGroup() {
+        return config.getString("craftconomy3.currency.world-group", "any");
+    }
 }

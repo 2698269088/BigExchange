@@ -2,6 +2,8 @@
 
 一个功能强大的 Minecraft 兑换码生成和管理插件，支持 Java 版和国际基岩版。
 
+**最新版本：** v1.3
+
 ## ✨ 功能特性
 
 ### 🎯 核心功能
@@ -15,10 +17,10 @@
 
 ### 🌍 跨平台支持
 
-| 平台 | 兑换方式 | 所需插件               |
-|------|---------|--------------------|
-| Java 版 | 聊天栏输入 | 无                  |
-| 国际基岩版 | 表单 UI | Geyser + Floodgate |
+| 平台 | 兑换方式   | 所需插件               |
+|------|--------|--------------------|
+| Java 版 | 铁砧GUI  | 无                  |
+| 国际基岩版 | 表单 UI  | Geyser + Floodgate |
 
 ### 📊 数据库特性
 
@@ -111,6 +113,13 @@ code:
     # 分隔符
     separator: "-"
   
+  # 有效期配置
+  validity:
+    # 默认有效期天数（-1 表示永久有效）
+    default-days: 30
+    # 自动过期检查间隔（分钟，0 表示禁用自动检查）
+    auto-check-interval: 60
+  
   # 安全配置
   security:
     # 是否启用加密哈希
@@ -166,6 +175,50 @@ form:
   detection-mode: "auto"
 
 # ============================================
+# 购买兑换码配置
+# ============================================
+purchase:
+  # 是否启用购买功能
+  enabled: true
+  # 购买价格（需要集成经济插件才能生效，目前暂时免费）
+  price: 100
+  # 购买的兑换码可用次数
+  uses: 1
+  # 购买的兑换码有效期天数 (-1 表示永久)
+  validity-days: 30
+  # 奖励命令列表（随机选择一条执行，支持占位符 %player%）
+  reward-commands:
+    - "money give %player% 200"
+    - "money give %player% 100"
+    - "gave %player% diamond 7"
+    - "gave %player% golden_apple 5"
+    - "gave %player% iron_ingot 12"
+    - "gave %player% diamond_block 64"
+
+# ============================================
+# Craftconomy3 数据库配置（用于扣除玩家余额）
+# ============================================
+craftconomy3:
+  # 是否启用 Craftconomy3 扣款
+  enabled: false
+  # Craftconomy3 数据库类型：mysql（目前仅支持 MySQL）
+  database-type: "mysql"
+  # MySQL 配置
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "craftconomy3"
+    username: "root"
+    password: "password"
+    table-prefix: ""
+  # 货币配置
+  currency:
+    # 使用的货币名称（必须与 Craftconomy3 中的货币名称一致）
+    name: "Coins"
+    # 世界组名称（用于确定从哪个世界组扣除金钱）
+    world-group: "default"
+
+# ============================================
 # 消息配置
 # ============================================
 messages:
@@ -201,6 +254,9 @@ messages:
   
   # 剩余次数提示
   code-remaining-uses: "&7 该兑换码剩余可用次数：&e%remaining%&7/&e%total%"
+  
+  # 有效期剩余时间提示
+  code-validity-remaining: "&7 有效期剩余：&e%remaining_time%"
 ```
 
 ---
@@ -221,6 +277,18 @@ messages:
 /redeem ABCDEF-1234567890
 ```
 - 立即兑换指定兑换码
+
+---
+
+## 🔐 权限节点
+
+| 权限 | 描述 | 默认 |
+|------|------|------|
+| `bigexchange.redeem` | 使用 `/redeem` 命令兑换兑换码 | 所有玩家 |
+| `bigexchange.purchase` | 使用 `/purchase` 命令购买兑换码 | 所有玩家 |
+| `bigexchange.admin` | 使用 `/be` 管理员命令 | 管理员 (OP) |
+| `bigexchange.craftconomy3.query` | 使用 `/c3query` 查询 Craftconomy3 数据 | 管理员 (OP) |
+| `bigexchange.craftconomy3.query.all` | 查询所有在线玩家的 Craftconomy3 数据 | 管理员 (OP) |
 
 ---
 
@@ -266,6 +334,19 @@ messages:
 /be modify ABCDEF-1234567890 10
 /be modify 123 unlimited
 ```
+
+#### 修改有效期
+```
+/be validity <兑换码|ID> <天数|permanent>
+```
+**示例：**
+```bash
+/be validity ABCDEF-1234567890 30  # 修改为 30 天有效期
+/be validity 123 permanent         # 修改为永久有效
+```
+**说明：**
+- 天数：设置有效期天数（从创建时间开始计算）
+- permanent: 设置为永久有效
 
 #### 列出兑换码
 ```
@@ -334,6 +415,57 @@ messages:
 /be reload
 ```
 - 重新加载配置文件
+
+---
+
+## 🔍 Craftconomy3 查询命令
+
+### `/c3query` - 查询 Craftconomy3 数据
+
+**权限：** `bigexchange.craftconomy3.query`
+
+**用法 1：查询所有配置数据**
+```
+/c3query
+```
+- 查询所有世界组、所有玩家、所有货币的数据
+
+**用法 2：查询指定玩家**
+```
+/c3query <玩家名称>
+```
+- 使用配置文件中指定的世界组和货币查询
+
+**用法 3：查询所有在线玩家**
+```
+/c3query *all*
+```
+- **权限：** `bigexchange.craftconomy3.query.all`
+- 查询所有在线玩家的余额（使用配置的世界组和货币）
+
+**用法 4：自定义查询**
+```
+/c3query <玩家名称> [世界组] [货币]
+```
+- 查询指定玩家在指定世界组和货币的余额
+
+**示例：**
+```bash
+# 查询 Steve 在默认配置的 worldGroup 和 currency 下的余额
+/c3query Steve
+
+# 查询所有在线玩家
+/c3query *all*
+
+# 查询 Alex 在 MyWorld 世界组中使用 Points 货币的余额
+/c3query Alex MyWorld Points
+```
+
+**输出内容：**
+- 玩家名称
+- 余额
+- 世界组
+- 货币名称
 
 ---
 
@@ -460,6 +592,8 @@ public class MyPlugin {
 | is_active | BOOLEAN | 是否激活 |
 | last_used | TIMESTAMP | 最后使用时间 |
 | reward_commands | TEXT | 奖励命令（分号分隔） |
+| validity_days | INT | 有效期天数（-1=永久） |
+| expiration_time | TIMESTAMP | 过期时间 |
 | metadata | TEXT | 元数据（JSON） |
 
 ### code_usage 表
@@ -485,6 +619,78 @@ public class MyPlugin {
 - 每个玩家只能使用一次同一个兑换码
 - 使用次数用完后自动停用
 - 数据库事务保证数据一致性
+
+---
+
+## 🛒 购买兑换码系统
+
+### `/purchase` - 购买兑换码
+
+**用法：**
+```
+/purchase
+```
+
+**权限节点：** `bigexchange.purchase`（默认所有玩家都有）
+
+**购买流程：**
+1. 玩家输入 `/purchase` 命令
+2. 系统直接生成兑换码并发放给玩家
+3. 玩家获得随机奖励命令
+
+**配置项 (config.yml)：**
+```yaml
+purchase:
+  enabled: true              # 是否启用购买功能
+  price: 100                 # 购买价格（需要经济插件支持）
+  uses: 1                    # 购买的兑换码可用次数
+  validity-days: 30          # 有效期天数（-1 表示永久）
+  reward-commands:           # 奖励命令列表（随机选择一条）
+    - "eco give %player% 50"
+    - "give %player% diamond 1"
+    - "say %player% 获得了奖励！"
+```
+
+**注意事项：**
+- 当前版本购买功能暂时免费，需要手动集成经济插件才能实现扣款
+- 奖励命令中的占位符 `%player%` 会自动替换为玩家名称
+- 每次购买时随机选择一条奖励命令执行
+- **v1.3 更新：** 移除了确认步骤，直接购买更便捷
+
+---
+
+## 🔌 Craftconomy3 支持
+
+### 数据库配置
+
+为了适配老版本服务器的历史遗留问题，提供了 Craftconomy3 数据库的配置结构。
+
+**配置项：**
+```yaml
+craftconomy3:
+  enabled: false             # 是否启用 Craftconomy3 支持
+  database-type: "mysql"     # 数据库类型：h2, mysql, sqlite
+  h2-path: "plugins/Craftconomy3/database"
+  sqlite-path: "plugins/Craftconomy3/database.db"
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "craftconomy3"
+    username: "root"
+    password: "password"
+    table-prefix: ""
+```
+
+**注意：** 当前版本仅保留配置结构，实际集成需要手动实现经济扣款逻辑。
+
+### 数据库处理器特点
+
+完全仿照 Craftconomy3 的数据库逻辑，确保数据一致性和兼容性：
+
+- ✅ **连接池管理** - 使用 HikariCP 连接池，高效的连接复用
+- ✅ **事务处理** - 支持批量操作，保证数据一致性
+- ✅ **安全性** - PreparedStatement 防止 SQL 注入，SHA-256 哈希算法加密兑换码
+- ✅ **兼容性** - 支持 MySQL、SQLite、H2 数据库，表前缀自定义
 
 ---
 
@@ -537,15 +743,36 @@ logging:
 
 ## 📝 更新日志
 
+### v1.3
+- ✅ 新增 Craftconomy3 数据查询命令 (`/c3query`)
+  - 支持查询所有玩家数据、指定玩家数据、所有在线玩家数据
+  - 支持自定义世界组和货币查询
+  - 完善的权限控制（`bigexchange.craftconomy3.query` 和 `bigexchange.craftconomy3.query.all`）
+- ✅ 优化购买流程
+  - 移除确认步骤，直接购买更便捷
+  - 系统自动生成兑换码并发放给玩家
+- ✅ 完善 Tab 补全功能
+  - `/be validity` 命令支持数字和 `permanent` 参数
+  - `/c3query` 命令支持在线玩家名称和 `*all*` 选项
+- ✅ 改进日志输出和错误提示
+  - 优化购买成功消息格式
+  - 增强数据库连接状态检测
+- ✅ 新增有效期管理命令
+  - `/be validity <兑换码|ID> <天数|permanent>` 修改兑换码有效期
+  - 支持设置为永久有效或指定天数
+
 ### v1.2
-- ✅ 为 Java版玩家添加 AnvilGUI 铁砧界面
-- ✅ 智能判断玩家类型（Java版/基岩版）使用不同界面
+- ✅ 为 Java 版玩家添加 AnvilGUI 铁砧界面
+- ✅ 智能判断玩家类型（Java 版/基岩版）使用不同界面
 - ✅ 优化点击处理，防止快速点击导致的报错
 - ✅ 兑换完成后自动关闭界面
 - ✅ 移除网易版支持，专注于国际版
 - ✅ 精简代码，提高性能
 - ✅ 优化表单处理逻辑
 - ✅ 改进调试日志输出
+- ✅ **新增购买兑换码系统** (`/purchase`)
+- ✅ **支持随机奖励命令和占位符**
+- ✅ **移植 Craftconomy3 MySQL 数据库处理器**
 
 ### v1.0
 - ✅ 初始版本发布
@@ -576,4 +803,4 @@ MIT License
 
 ---
 
-**Made with ❤️ for Minecraft Community**
+**Made with ❤️ for MCOCET**

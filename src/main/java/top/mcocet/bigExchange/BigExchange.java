@@ -4,6 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import top.mcocet.bigExchange.api.ExchangeAPI;
 import top.mcocet.bigExchange.command.CommandHandler;
+import top.mcocet.bigExchange.command.Craftconomy3QueryCommand;
+import top.mcocet.bigExchange.command.PurchaseCommand;
 import top.mcocet.bigExchange.command.RedeemCommand;
 import top.mcocet.bigExchange.listener.ChatInputListener;
 import top.mcocet.bigExchange.listener.FormListener;
@@ -24,6 +26,7 @@ public final class BigExchange extends JavaPlugin {
     private FormListener formListener;
     private LogManager logManager;
     private CodeExpirationTask expirationTask;
+    private top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler craftconomy3Handler;
 
     @Override
     public void onEnable() {
@@ -72,6 +75,28 @@ public final class BigExchange extends JavaPlugin {
             logManager.info("自动过期检查已禁用");
         }
         
+        // 初始化 Craftconomy3 数据库处理器（如果启用）
+        if (configManager.isCraftconomy3Enabled()) {
+            craftconomy3Handler = new top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler(
+                this,
+                configManager.getCraftconomy3MysqlHost(),
+                configManager.getCraftconomy3MysqlPort(),
+                configManager.getCraftconomy3MysqlDatabase(),
+                configManager.getCraftconomy3MysqlUsername(),
+                configManager.getCraftconomy3MysqlPassword(),
+                configManager.getCraftconomy3MysqlTablePrefix(),
+                configManager.getCraftconomy3CurrencyName(),
+                configManager.getCraftconomy3WorldGroup()
+            );
+            if (craftconomy3Handler.isConnected()) {
+                logManager.info("Craftconomy3 数据库已连接（用于购买扣款）");
+            } else {
+                logManager.severe("Craftconomy3 数据库连接失败，购买功能可能无法正常工作");
+            }
+        } else {
+            logManager.info("Craftconomy3 扣款功能未启用");
+        }
+        
         logManager.info("插件已启用！");
     }
 
@@ -80,6 +105,12 @@ public final class BigExchange extends JavaPlugin {
         // 停止过期检查任务
         if (expirationTask != null) {
             expirationTask.stop();
+        }
+        
+        // 关闭 Craftconomy3 数据库连接
+        if (craftconomy3Handler != null) {
+            craftconomy3Handler.close();
+            logManager.info("Craftconomy3 数据库连接已关闭");
         }
         
         // 关闭数据库连接
@@ -99,11 +130,25 @@ public final class BigExchange extends JavaPlugin {
         
         // 注册兑换命令
         getCommand("redeem").setExecutor(new RedeemCommand(codeManager, configManager, formListener));
+        
+        // 注册购买命令
+        if (configManager.isPurchaseEnabled()) {
+            getCommand("purchase").setExecutor(new PurchaseCommand(this, codeManager, configManager));
+            logManager.info("购买命令已注册 (/purchase)");
+        }
+        
+        // 注册 Craftconomy3 查询命令
+        if (configManager.isCraftconomy3Enabled()) {
+            Craftconomy3QueryCommand queryCommand = new Craftconomy3QueryCommand(this, configManager);
+            getCommand("c3query").setExecutor(queryCommand);
+            getCommand("c3query").setTabCompleter(queryCommand);
+            logManager.info("Craftconomy3 查询命令已注册 (/c3query)");
+        }
     }
 
     private void registerListeners() {
         // 注册聊天输入监听器
-        chatInputListener = new ChatInputListener(codeManager, configManager);
+        chatInputListener = new ChatInputListener(this, codeManager, configManager);
         Bukkit.getPluginManager().registerEvents(chatInputListener, this);
         
         // 注册表单监听器
@@ -160,5 +205,21 @@ public final class BigExchange extends JavaPlugin {
      */
     public ExchangeAPI getExchangeAPI() {
         return exchangeAPI;
+    }
+
+    /**
+     * 获取聊天输入监听器
+     * @return 聊天输入监听器
+     */
+    public ChatInputListener getChatInputListener() {
+        return chatInputListener;
+    }
+
+    /**
+     * 获取 Craftconomy3 数据库处理器
+     * @return Craftconomy3 处理器
+     */
+    public top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler getCraftconomy3Handler() {
+        return craftconomy3Handler;
     }
 }

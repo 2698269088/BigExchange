@@ -4,6 +4,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import top.mcocet.bigExchange.BigExchange;
 import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
 
@@ -16,7 +17,7 @@ public class ChatInputListener implements Listener {
     private final ConfigManager configManager;
     private final Set<UUID> waitingForCode = new HashSet<>();
 
-    public ChatInputListener(CodeManager codeManager, ConfigManager configManager) {
+    public ChatInputListener(BigExchange plugin, CodeManager codeManager, ConfigManager configManager) {
         this.codeManager = codeManager;
         this.configManager = configManager;
     }
@@ -40,29 +41,29 @@ public class ChatInputListener implements Listener {
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        
+            
         if (!waitingForCode.contains(player.getUniqueId())) {
             return;
         }
-
+    
         event.setCancelled(true); // 取消聊天消息
         String message = event.getMessage().trim();
-
+    
         if (message.equalsIgnoreCase("cancel")) {
             removeWaitingPlayer(player);
-            player.sendMessage(configManager.getMessage("prefix") + "§c已取消输入");
+            player.sendMessage(configManager.getMessage("prefix") + "§c 已取消输入");
             return;
         }
-
+    
         // 处理兑换码
         boolean success = handleCodeInput(player, message);
-        
+            
         if (success) {
             removeWaitingPlayer(player);
         } else {
             // 验证失败，继续等待
             player.sendMessage(configManager.getMessage("prefix") + 
-                    "§7请重新输入或输入 cancel 取消");
+                    "§7 请重新输入或输入 cancel 取消");
         }
     }
 

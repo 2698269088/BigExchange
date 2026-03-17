@@ -1,5 +1,5 @@
 name: BigExchange
-version: '1.2'
+version: '1.3'
 main: top.mcocet.bigExchange.BigExchange
 api-version: '1.18'
 description: 随机兑换码生成插件，支持加密认证、SQLite MySQL 数据库管理
@@ -18,6 +18,14 @@ commands:
     description: 兑换码兑换命令
     usage: /<command> [兑换码]
     aliases: [cdkey, code]
+  purchase:
+    description: 购买兑换码命令
+    usage: /<command>
+    aliases: [buy]
+  c3query:
+    description: Craftconomy3 数据查询命令
+    usage: /<command> [玩家名称|*all*]
+    aliases: [craftconomy3query, c3q]
 
 permissions:
   bigexchange.admin:
@@ -26,3 +34,12 @@ permissions:
   bigexchange.redeem:
     description: 使用兑换码
     default: true
+  bigexchange.purchase:
+    description: 购买兑换码
+    default: true
+  bigexchange.craftconomy3.query:
+    description: 查询 Craftconomy3 数据
+    default: op
+  bigexchange.craftconomy3.query.all:
+    description: 查询所有在线玩家的 Craftconomy3 数据
+    default: op

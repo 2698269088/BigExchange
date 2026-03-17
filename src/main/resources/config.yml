@@ -108,6 +108,46 @@ form:
   # force-chat: 强制使用聊天栏输入
   detection-mode: "auto"
 
+# 购买兑换码配置
+purchase:
+  # 是否启用购买功能
+  enabled: true
+  # 购买价格（需要集成经济插件才能生效，目前暂时免费）
+  price: 100
+  # 购买的兑换码可用次数
+  uses: 1
+  # 购买的兑换码有效期天数 (-1 表示永久)
+  validity-days: 30
+  # 奖励命令列表（随机选择一条执行，支持占位符 %player%）
+  reward-commands:
+    - "money give %player% 200"
+    - "money give %player% 100"
+    - "gave %player% diamond 7"
+    - "gave %player% golden_apple 5"
+    - "gave %player% iron_ingot 12"
+    - "gave %player% diamond_block 64"
+
+# Craftconomy3 数据库配置（用于扣除玩家余额）
+craftconomy3:
+  # 是否启用 Craftconomy3 扣款
+  enabled: false
+  # Craftconomy3 数据库类型：mysql（目前仅支持 MySQL）
+  database-type: "mysql"
+  # MySQL 配置
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "craftconomy3"
+    username: "root"
+    password: "password"
+    table-prefix: ""
+  # 货币配置
+  currency:
+    # 使用的货币名称（必须与 Craftconomy3 中的货币名称一致）
+    name: "Coins"
+    # 世界组名称（用于确定从哪个世界组扣除金钱）
+    world-group: "default"
+
 # 日志配置
 logging:
   # 日志级别：INFO, WARNING, SEVERE, FINE, FINER, FINEST
