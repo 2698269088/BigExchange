@@ -161,11 +161,48 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         String createdBy = sender.getName();
         String code = codeManager.generateCode(uses, createdBy, rewardCommands, validityDays);
 
-        String message = configManager.getMessage("code-generated")
-                .replace("%code%", code)
-                .replace("%uses%", uses == -1 ? "无限" : String.valueOf(uses))
-                .replace("%validity%", validityDays == -1 ? "永久有效" : validityDays + "天");
-        sender.sendMessage(message);
+        // 发送兑换码消息，带点击复制功能
+        if (sender instanceof org.bukkit.entity.Player) {
+            org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+            
+            // 创建可点击的兑换码文本
+            net.md_5.bungee.api.chat.TextComponent codeComponent = new net.md_5.bungee.api.chat.TextComponent(code);
+            
+            // 设置悬停提示
+            net.md_5.bungee.api.chat.BaseComponent[] hoverText = {
+                new net.md_5.bungee.api.chat.TextComponent("§7点击复制兑换码")
+            };
+            codeComponent.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(
+                net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                hoverText
+            ));
+            
+            // 设置点击事件 - 复制到剪贴板
+            codeComponent.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(
+                net.md_5.bungee.api.chat.ClickEvent.Action.COPY_TO_CLIPBOARD,
+                code
+            ));
+            
+            // 构建完整消息
+            net.md_5.bungee.api.chat.TextComponent prefixComponent = new net.md_5.bungee.api.chat.TextComponent(
+                configManager.translateColorCodes(configManager.getConfig().getString("messages.prefix", "&8[&6BigExchange&8] "))
+            );
+            net.md_5.bungee.api.chat.TextComponent textPart = new net.md_5.bungee.api.chat.TextComponent(
+                "§7已生成兑换码："
+            );
+            net.md_5.bungee.api.chat.TextComponent usesPart = new net.md_5.bungee.api.chat.TextComponent(
+                " §7，可用次数：" + (uses == -1 ? "无限" : uses) + "，有效期：" + (validityDays == -1 ? "永久有效" : validityDays + "天")
+            );
+            
+            player.spigot().sendMessage(prefixComponent, textPart, codeComponent, usesPart);
+        } else {
+            // 控制台输出（不支持点击）
+            String message = configManager.getMessage("code-generated")
+                    .replace("%code%", code)
+                    .replace("%uses%", uses == -1 ? "无限" : String.valueOf(uses))
+                    .replace("%validity%", validityDays == -1 ? "永久有效" : validityDays + "天");
+            sender.sendMessage(message);
+        }
         
         if (rewardCommands != null && !rewardCommands.isEmpty()) {
             sender.sendMessage(configManager.getMessage("prefix") + "§7奖励命令：§b" + rewardCommands);

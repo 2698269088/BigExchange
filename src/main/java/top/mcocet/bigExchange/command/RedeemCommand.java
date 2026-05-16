@@ -8,6 +8,7 @@ import top.mcocet.bigExchange.listener.FormListener;
 import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
 import top.mcocet.bigExchange.manager.LogManager;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 public class RedeemCommand implements CommandExecutor {
     private final CodeManager codeManager;
@@ -66,8 +67,8 @@ public class RedeemCommand implements CommandExecutor {
         logManager.fine("兑换码使用结果：" + (success ? "成功" : "失败"));
         
         if (success) {
-            // 延迟 1 tick 发送消息，确保奖励命令先执行
-            org.bukkit.Bukkit.getScheduler().runTaskLater(codeManager.getPlugin(), () -> {
+            // 延迟 1 tick 发送消息，确保奖励命令先执行（Folia 兼容）
+            FoliaScheduler.runSyncLater(codeManager.getPlugin(), () -> {
                 player.sendMessage(configManager.getMessage("code-redeemed"));
                 
                 // 显示剩余次数（如果不是无限次）

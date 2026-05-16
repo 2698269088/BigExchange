@@ -132,7 +132,8 @@ public class PurchaseCommand implements CommandExecutor {
         Random random = new Random();
         String command = commands.get(random.nextInt(commands.size()));
         
-        // 替换占位符 %player%
-        return command.replace("%player%", playerName);
+        // 替换占位符 %player% 和 {player}
+        return command.replace("%player%", playerName)
+                     .replace("{player}", playerName);
     }
 }

@@ -51,6 +51,17 @@ code:
     encrypt: true
     # 哈希算法
     algorithm: "SHA-256"
+  # 默认奖励命令配置（当生成兑换码时未指定奖励命令时使用）
+  reward:
+    # 是否启用默认奖励命令
+    enabled: true
+    # 奖励命令列表（随机选择一条执行，支持占位符 {player} 或 %player%）
+    # 注意：如果生成兑换码时指定了奖励命令，则使用指定的命令；否则从这里随机选择
+    commands:
+      - "give {player} diamond 1"
+      - "give {player} iron_ingot 5"
+      - "give {player} golden_apple 2"
+      - "eco give {player} 100"
 
 # 消息配置
 # 支持颜色代码 (&a, &b, &c 等)
@@ -91,6 +102,7 @@ form:
   # Java 版 AnvilGUI 配置
   # 是否启用 AnvilGUI 界面（true/false）
   # 启用后，Java 版玩家使用 /redeem 命令时会打开铁砧界面而不是聊天栏提示
+  # 注意：Folia/Luminol 服务器不支持 AnvilGUI，会自动降级为聊天栏输入
   anvil-gui-enabled: true
   # 表单标题（支持颜色代码）
   redeem-title: "&6 兑换码兑换"
@@ -118,7 +130,7 @@ purchase:
   uses: 1
   # 购买的兑换码有效期天数 (-1 表示永久)
   validity-days: 30
-  # 奖励命令列表（随机选择一条执行，支持占位符 %player%）
+  # 奖励命令列表（随机选择一条执行，支持占位符 {player} 或 %player%）
   reward-commands:
     - "money give %player% 200"
     - "money give %player% 100"

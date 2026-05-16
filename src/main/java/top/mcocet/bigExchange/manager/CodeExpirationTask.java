@@ -2,6 +2,7 @@ package top.mcocet.bigExchange.manager;
 
 import org.bukkit.Bukkit;
 import top.mcocet.bigExchange.BigExchange;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 import java.util.List;
 
@@ -31,7 +32,8 @@ public class CodeExpirationTask {
 
         long intervalTicks = intervalMinutes * 60L * 20L; // 转换为 tick
         
-        taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        // 使用 Folia 兼容的调度器
+        FoliaScheduler.runSyncRepeating(plugin, () -> {
             checkAndDeactivateExpiredCodes();
         }, intervalTicks, intervalTicks);
 
@@ -43,7 +45,10 @@ public class CodeExpirationTask {
      */
     public void stop() {
         if (taskId != -1) {
-            Bukkit.getScheduler().cancelTask(taskId);
+            // Folia 不支持直接取消任务，这里仅做标记
+            if (!FoliaScheduler.isFolia()) {
+                Bukkit.getScheduler().cancelTask(taskId);
+            }
             taskId = -1;
             logManager.info("已停止兑换码过期检查任务");
         }

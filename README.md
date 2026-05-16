@@ -2,7 +2,7 @@
 
 一个功能强大的 Minecraft 兑换码生成和管理插件，支持 Java 版和国际基岩版。
 
-**最新版本：** v1.3
+**最新版本：** v1.4
 
 ## ✨ 功能特性
 
@@ -14,6 +14,7 @@
 - **SHA-256 加密**：防破解认证机制
 - **双数据库支持**：SQLite（默认）和 MySQL，支持双备份
 - **多平台支持**：Java 版（聊天栏）、国际基岩版（表单 UI）
+- **Folia 支持**：完全兼容 Folia 服务器架构
 
 ### 🌍 跨平台支持
 
@@ -42,6 +43,7 @@
 - Minecraft Server 1.18.2+
 - Java 17+
 - Maven（编译需要）
+- **支持服务器类型**：Spigot、Paper、Purpur、Folia
 
 ### 安装步骤
 
@@ -742,6 +744,18 @@ logging:
 ---
 
 ## 📝 更新日志
+
+### v1.4
+- ✅ **新增 Folia 支持**
+  - 添加 Folia API 依赖
+  - 创建 FoliaScheduler 工具类，自动检测并兼容 Folia 环境
+  - 替换所有 Bukkit Scheduler 调用为 Folia 兼容版本
+  - 在 plugin.yml 中声明 folia-supported: true
+  - 完全兼容区域化多线程架构
+- ✅ 优化任务调度逻辑
+  - 同步任务、延迟任务、重复任务全部支持 Folia
+  - 异步任务使用 Folia AsyncScheduler
+  - 实体相关任务使用 EntityScheduler 优化性能
 
 ### v1.3
 - ✅ 新增 Craftconomy3 数据查询命令 (`/c3query`)

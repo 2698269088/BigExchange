@@ -9,6 +9,7 @@ import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
 import top.mcocet.bigExchange.manager.LogManager;
 import top.mcocet.bigExchange.util.AnvilGUIUtil;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 import java.lang.reflect.Method;
 
@@ -42,8 +43,12 @@ public class FormListener implements Listener {
                 sendChatForm(player);
             }
         } else {
-            // Java 版玩家使用AnvilGUI
-            if (configManager.isAnvilGUIEnabled()) {
+            // Java 版玩家
+            // Folia/Luminol 不支持 AnvilGUI，直接使用聊天栏
+            if (top.mcocet.bigExchange.util.FoliaScheduler.isFolia()) {
+                logManager.fine("Folia/Luminol 环境，Java 版玩家 " + player.getName() + " 使用聊天栏输入");
+                sendChatForm(player);
+            } else if (configManager.isAnvilGUIEnabled()) {
                 logManager.fine("Java 版玩家 " + player.getName() + "，打开 AnvilGUI 界面");
                 anvilGUIUtil.openRedeemGUI(player);
             } else {
@@ -306,8 +311,8 @@ public class FormListener implements Listener {
         CodeManager.UseResult useResult = codeManager.useCode(code, player.getUniqueId(), player.getName());
         
         if (useResult.success) {
-            // 延迟发送消息，确保奖励命令先执行
-            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // 延迟发送消息，确保奖励命令先执行（Folia 兼容）
+            FoliaScheduler.runSyncLater(plugin, () -> {
                 player.sendMessage(configManager.getMessage("code-redeemed"));
                 
                 if (useResult.codeData != null && !useResult.codeData.isUnlimited()) {

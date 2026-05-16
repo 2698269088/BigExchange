@@ -7,6 +7,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import top.mcocet.bigExchange.BigExchange;
 import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -101,8 +102,8 @@ public class ChatInputListener implements Listener {
         CodeManager.UseResult useResult = codeManager.useCode(code, player.getUniqueId(), player.getName());
         
         if (useResult.success) {
-            // 延迟 1 tick 发送消息，确保奖励命令先执行
-            org.bukkit.Bukkit.getScheduler().runTaskLater(codeManager.getPlugin(), () -> {
+            // 延迟 1 tick 发送消息，确保奖励命令先执行（Folia 兼容）
+            FoliaScheduler.runSyncLater(codeManager.getPlugin(), () -> {
                 player.sendMessage(configManager.getMessage("code-redeemed"));
                 
                 // 显示剩余次数（如果不是无限次）

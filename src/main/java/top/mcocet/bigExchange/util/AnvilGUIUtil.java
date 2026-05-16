@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import top.mcocet.bigExchange.BigExchange;
 import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,8 +58,8 @@ public class AnvilGUIUtil {
                     if (slot == AnvilGUI.Slot.OUTPUT) {
                         String code = stateSnapshot.getText();
                         if (code != null && !code.trim().isEmpty()) {
-                            // 延迟一点处理，让界面有机会更新
-                            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            // 延迟一点处理，让界面有机会更新（Folia 兼容）
+                            FoliaScheduler.runSyncLater(plugin, () -> {
                                 handleCodeInput(p, code.trim(), true); // true 表示完成后关闭界面
                             }, 2L);
                         } else {
@@ -114,8 +115,8 @@ public class AnvilGUIUtil {
         CodeManager.UseResult useResult = codeManager.useCode(code, player.getUniqueId(), player.getName());
         
         if (useResult.success) {
-            // 延迟发送消息，确保奖励命令先执行
-            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // 延迟发送消息，确保奖励命令先执行（Folia 兼容）
+            FoliaScheduler.runSyncLater(plugin, () -> {
                 player.sendMessage(configManager.getMessage("code-redeemed"));
                 
                 // 显示剩余次数（如果不是无限次）
@@ -138,7 +139,7 @@ public class AnvilGUIUtil {
                 
                 // 完成后关闭界面
                 if (closeAfterComplete) {
-                    org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    FoliaScheduler.runSyncLater(plugin, () -> {
                         player.closeInventory();
                     }, 5L);
                 }

@@ -1,6 +1,7 @@
 package top.mcocet.bigExchange.manager;
 
 import top.mcocet.bigExchange.BigExchange;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
 import java.security.SecureRandom;
 import java.util.Random;
@@ -158,8 +159,18 @@ public class CodeManager {
         }
 
         // 执行奖励命令
-        if (updatedCodeData != null && updatedCodeData.rewardCommands != null && !updatedCodeData.rewardCommands.isEmpty()) {
-            executeRewardCommands(updatedCodeData.rewardCommands, playerName);
+        if (updatedCodeData != null) {
+            String rewardCommands = updatedCodeData.rewardCommands;
+            
+            // 如果兑换码没有指定奖励命令，则从配置中随机选择一个
+            if ((rewardCommands == null || rewardCommands.isEmpty()) && configManager.isDefaultRewardEnabled()) {
+                rewardCommands = getRandomDefaultRewardCommand(playerName);
+            }
+            
+            // 执行奖励命令
+            if (rewardCommands != null && !rewardCommands.isEmpty()) {
+                executeRewardCommands(rewardCommands, playerName);
+            }
         }
 
         return new UseResult(true, VerifyResult.VerifyStatus.VALID, updatedCodeData);
@@ -181,11 +192,12 @@ public class CodeManager {
             String command = cmd.trim();
             if (command.isEmpty()) continue;
 
-            // 替换占位符 {player}
-            final String finalCommand = command.replace("{player}", playerName);
+            // 替换占位符 {player} 和 %player%
+            String finalCommand = command.replace("{player}", playerName)
+                                        .replace("%player%", playerName);
 
-            // 异步执行命令
-            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            // 异步执行命令（Folia 兼容）
+            FoliaScheduler.runSync(plugin, () -> {
                 try {
                     plugin.getServer().dispatchCommand(
                         plugin.getServer().getConsoleSender(), 
@@ -196,6 +208,26 @@ public class CodeManager {
                 }
             });
         }
+    }
+
+    /**
+     * 从配置中随机选择一个默认奖励命令
+     * @param playerName 玩家名称
+     * @return 随机选择的奖励命令，如果没有配置则返回 null
+     */
+    private String getRandomDefaultRewardCommand(String playerName) {
+        java.util.List<String> commands = configManager.getDefaultRewardCommands();
+        if (commands == null || commands.isEmpty()) {
+            return null;
+        }
+        
+        // 随机选择一个命令
+        java.util.Random random = new java.util.Random();
+        String command = commands.get(random.nextInt(commands.size()));
+        
+        // 替换占位符 {player} 和 %player%
+        return command.replace("{player}", playerName)
+                     .replace("%player%", playerName);
     }
 
     /**

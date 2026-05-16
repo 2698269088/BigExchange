@@ -32,6 +32,9 @@ public final class BigExchange extends JavaPlugin {
     public void onEnable() {
         instance = this;
         
+        // 设置 FoliaScheduler 的 Logger
+        top.mcocet.bigExchange.util.FoliaScheduler.setLogger(getLogger());
+        
         // 初始化配置管理器
         configManager = new ConfigManager(this);
         

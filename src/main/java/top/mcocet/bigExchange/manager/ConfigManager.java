@@ -42,6 +42,14 @@ public class ConfigManager {
         config.addDefault("code.security.encrypt", true);
         config.addDefault("code.security.algorithm", "SHA-256");
         config.addDefault("code.validity.default-days", 30); // 默认 30 天有效期
+        config.addDefault("code.reward.enabled", true); // 启用默认奖励命令
+        java.util.List<String> defaultRewards = java.util.Arrays.asList(
+            "give {player} diamond 1",
+            "give {player} iron_ingot 5",
+            "give {player} golden_apple 2",
+            "eco give {player} 100"
+        );
+        config.addDefault("code.reward.commands", defaultRewards);
         config.addDefault("messages.prefix", "&8[&6BigExchange&8] ");
         config.addDefault("messages.success", "&a操作成功！");
         config.addDefault("messages.error", "&c操作失败！");
@@ -370,5 +378,25 @@ public class ConfigManager {
      */
     public String getCraftconomy3WorldGroup() {
         return config.getString("craftconomy3.currency.world-group", "any");
+    }
+
+    // ============================================
+    // 默认奖励命令配置
+    // ============================================
+
+    /**
+     * 检查是否启用默认奖励命令
+     * @return true 表示启用
+     */
+    public boolean isDefaultRewardEnabled() {
+        return config.getBoolean("code.reward.enabled", true);
+    }
+
+    /**
+     * 获取默认奖励命令列表
+     * @return 奖励命令列表
+     */
+    public java.util.List<String> getDefaultRewardCommands() {
+        return config.getStringList("code.reward.commands");
     }
 }
