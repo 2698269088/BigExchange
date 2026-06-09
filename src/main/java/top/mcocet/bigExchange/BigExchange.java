@@ -27,6 +27,7 @@ public final class BigExchange extends JavaPlugin {
     private LogManager logManager;
     private CodeExpirationTask expirationTask;
     private top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler craftconomy3Handler;
+    private top.mcocet.bigExchange.manager.netease.NeteaseCompatibilityManager neteaseManager;
 
     @Override
     public void onEnable() {
@@ -59,6 +60,16 @@ public final class BigExchange extends JavaPlugin {
         // 注册监听器（必须在注册命令之前，因为 RedeemCommand 需要 FormListener）
         registerListeners();
         logManager.info("监听器已注册");
+        
+        // 初始化网易兼容管理器
+        if (configManager.isNeteaseForm()) {
+            neteaseManager = new top.mcocet.bigExchange.manager.netease.NeteaseCompatibilityManager(this);
+            if (neteaseManager.isBaseAPIAvailable()) {
+                logManager.info("网易兼容层已启用");
+            } else {
+                logManager.info("网易兼容层未启用（BaseAPI 不可用）");
+            }
+        }
         
         // 注册命令
         registerCommands();
@@ -224,5 +235,21 @@ public final class BigExchange extends JavaPlugin {
      */
     public top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler getCraftconomy3Handler() {
         return craftconomy3Handler;
+    }
+
+    /**
+     * 获取网易兼容管理器
+     * @return 网易兼容管理器
+     */
+    public top.mcocet.bigExchange.manager.netease.NeteaseCompatibilityManager getNeteaseManager() {
+        return neteaseManager;
+    }
+
+    /**
+     * 获取表单监听器
+     * @return 表单监听器
+     */
+    public FormListener getFormListener() {
+        return formListener;
     }
 }

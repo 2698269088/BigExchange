@@ -36,6 +36,7 @@ public class SQLiteDatabaseHandler {
                     code_hash TEXT NOT NULL,
                     uses INTEGER DEFAULT -1,
                     used_count INTEGER DEFAULT 0,
+                    player_uses INTEGER DEFAULT -1,
                     created_by TEXT,
                     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1,
@@ -58,6 +59,9 @@ public class SQLiteDatabaseHandler {
         
         // 检查并添加 validity_days 字段
         addColumnIfNotExists("exchange_codes", "validity_days", "INTEGER");
+        
+        // 检查并添加 player_uses 字段（单个玩家可用次数）
+        addColumnIfNotExists("exchange_codes", "player_uses", "INTEGER");
         
         String usageSql = """
                 CREATE TABLE IF NOT EXISTS code_usage (
@@ -102,20 +106,82 @@ public class SQLiteDatabaseHandler {
     /**
      * 保存兑换码
      */
-    public void saveCode(String code, String codeHash, int uses, String createdBy, String rewardCommands,
+    public void saveCode(String code, String codeHash, int uses, int playerUses, String createdBy, String rewardCommands,
                         java.sql.Timestamp expirationTime, int validityDays) {
-        String sql = "INSERT INTO exchange_codes (code, code_hash, uses, created_by, reward_commands, expiration_time, validity_days) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO exchange_codes (code, code_hash, uses, player_uses, created_by, reward_commands, expiration_time, validity_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, code);
             pstmt.setString(2, codeHash);
             pstmt.setInt(3, uses);
-            pstmt.setString(4, createdBy);
-            pstmt.setString(5, rewardCommands != null ? rewardCommands : "");
-            pstmt.setTimestamp(6, expirationTime);
-            pstmt.setInt(7, validityDays);
+            pstmt.setInt(4, playerUses);
+            pstmt.setString(5, createdBy);
+            pstmt.setString(6, rewardCommands != null ? rewardCommands : "");
+            pstmt.setTimestamp(7, expirationTime);
+            pstmt.setInt(8, validityDays);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 保存兑换码（兼容旧版本，player_uses 默认 -1）
+     */
+    public void saveCode(String code, String codeHash, int uses, String createdBy, String rewardCommands,
+                        java.sql.Timestamp expirationTime, int validityDays) {
+        saveCode(code, codeHash, uses, -1, createdBy, rewardCommands, expirationTime, validityDays);
+    }
+
+    /**
+     * 增加已使用次数（带乐观锁检查）
+     * @return 更新后的 usedCount，如果更新失败返回 -1
+     */
+    public int incrementUsedCountWithCheck(int codeId) {
+        String checkSql = "SELECT uses, used_count FROM exchange_codes WHERE id = ?";
+        String updateSql = "UPDATE exchange_codes SET used_count = used_count + 1, last_used = CURRENT_TIMESTAMP WHERE id = ? AND (uses = -1 OR used_count < uses)";
+
+        try {
+            connection.setAutoCommit(false);
+
+            // 获取当前值
+            int uses = -1;
+            int usedCount = 0;
+            try (PreparedStatement pstmt = connection.prepareStatement(checkSql)) {
+                pstmt.setInt(1, codeId);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    uses = rs.getInt("uses");
+                    usedCount = rs.getInt("used_count");
+                } else {
+                    connection.rollback();
+                    return -1;
+                }
+            }
+
+            // 检查是否可以使用
+            if (uses != -1 && usedCount >= uses) {
+                connection.rollback();
+                return -1;
+            }
+
+            // 更新
+            try (PreparedStatement pstmt = connection.prepareStatement(updateSql)) {
+                pstmt.setInt(1, codeId);
+                int affected = pstmt.executeUpdate();
+                if (affected == 0) {
+                    connection.rollback();
+                    return -1;
+                }
+            }
+
+            connection.commit();
+            return usedCount + 1;
+        } catch (SQLException e) {
+            try { connection.rollback(); } catch (SQLException ignored) {}
+            e.printStackTrace();
+            return -1;
+        } finally {
+            try { connection.setAutoCommit(true); } catch (SQLException ignored) {}
         }
     }
 
@@ -157,6 +223,7 @@ public class SQLiteDatabaseHandler {
                     rs.getString("code_hash"),
                     rs.getInt("uses"),
                     rs.getInt("used_count"),
+                    rs.getInt("player_uses"),
                     rs.getString("created_by"),
                     rs.getTimestamp("created_time"),
                     rs.getBoolean("is_active"),
@@ -202,6 +269,22 @@ public class SQLiteDatabaseHandler {
                 pstmt.setTimestamp(2, new java.sql.Timestamp(expirationMillis));
             }
             pstmt.setInt(3, codeId);
+            pstmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 更新兑换码奖励命令
+     */
+    public boolean updateRewardCommands(int codeId, String rewardCommands) {
+        String sql = "UPDATE exchange_codes SET reward_commands = ? WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, rewardCommands != null ? rewardCommands : "");
+            pstmt.setInt(2, codeId);
             pstmt.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -302,6 +385,7 @@ public class SQLiteDatabaseHandler {
                     rs.getString("code_hash"),
                     rs.getInt("uses"),
                     rs.getInt("used_count"),
+                    rs.getInt("player_uses"),
                     rs.getString("created_by"),
                     rs.getTimestamp("created_time"),
                     rs.getBoolean("is_active"),
@@ -315,6 +399,24 @@ public class SQLiteDatabaseHandler {
             e.printStackTrace();
         }
         return codes;
+    }
+
+    /**
+     * 获取玩家使用次数
+     */
+    public int getPlayerUsageCount(int codeId, String playerUuid) {
+        String sql = "SELECT COUNT(*) FROM code_usage WHERE code_id = ? AND player_uuid = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, codeId);
+            pstmt.setString(2, playerUuid);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     /**

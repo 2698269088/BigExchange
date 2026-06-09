@@ -49,6 +49,14 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 if (!checkPermission(sender, "bigexchange.admin")) return true;
                 handleGenerate(sender, args);
             }
+            case "genplayer" -> {
+                if (!checkPermission(sender, "bigexchange.admin")) return true;
+                handleGenerateWithPlayerLimit(sender, args);
+            }
+            case "genform" -> {
+                if (!checkPermission(sender, "bigexchange.admin")) return true;
+                handleGenerateForm(sender);
+            }
             case "delete" -> {
                 if (!checkPermission(sender, "bigexchange.admin")) return true;
                 handleDelete(sender, args);
@@ -89,6 +97,14 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 if (!checkPermission(sender, "bigexchange.admin")) return true;
                 handleReload(sender);
             }
+            case "set" -> {
+                if (!checkPermission(sender, "bigexchange.admin")) return true;
+                handleSet(sender, args);
+            }
+            case "reward" -> {
+                if (!checkPermission(sender, "bigexchange.admin")) return true;
+                handleReward(sender, args);
+            }
             default -> sendHelp(sender);
         }
 
@@ -98,6 +114,7 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
     private void handleGenerate(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(configManager.getMessage("error") + "用法：/be generate <次数|unlimited> [奖励命令] [有效期天数]");
+            sender.sendMessage("§7多命令用分号分隔，如：/abc 123;/qwe 456");
             return;
         }
 
@@ -117,51 +134,35 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
             }
         }
 
-        // 获取奖励命令（从第三个参数开始，可以包含空格）
+        // 获取奖励命令和有效期
         String rewardCommands = null;
         int validityDays = configManager.getDefaultValidityDays(); // 默认使用配置的有效期
-        
+
         if (args.length >= 3) {
-            // 检查第三个参数是否是数字（有效期）还是命令
+            // 先尝试把最后一个参数当作有效期
+            int lastIndex = args.length - 1;
             try {
-                validityDays = Integer.parseInt(args[2]);
-                // 如果成功解析为数字，继续检查是否有奖励命令
-                if (args.length >= 4) {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 3; i < args.length; i++) {
-                        if (sb.length() > 0) sb.append(" ");
-                        sb.append(args[i]);
-                    }
-                    rewardCommands = sb.toString();
-                }
+                validityDays = Integer.parseInt(args[lastIndex]);
+                lastIndex--; // 最后一个参数是有效期，往前移一位
             } catch (NumberFormatException e) {
-                // 第三个参数不是数字，当作奖励命令处理
+                // 最后一个参数不是数字，没有指定有效期
+            }
+
+            // 剩下的参数组合成奖励命令
+            if (lastIndex >= 2) {
                 StringBuilder sb = new StringBuilder();
-                for (int i = 2; i < args.length; i++) {
+                for (int i = 2; i <= lastIndex; i++) {
                     if (sb.length() > 0) sb.append(" ");
                     sb.append(args[i]);
                 }
                 rewardCommands = sb.toString();
-                
-                // 检查最后一个参数是否是有效期
-                String[] cmdParts = rewardCommands.split(" ");
-                if (cmdParts.length > 1) {
-                    try {
-                        String lastPart = cmdParts[cmdParts.length - 1];
-                        validityDays = Integer.parseInt(lastPart);
-                        // 移除最后一个参数（有效期）
-                        rewardCommands = rewardCommands.substring(0, rewardCommands.lastIndexOf(" "));
-                    } catch (NumberFormatException ex) {
-                        // 最后一个参数不是数字，使用默认有效期
-                    }
-                }
             }
         }
 
         String createdBy = sender.getName();
-        String code = codeManager.generateCode(uses, createdBy, rewardCommands, validityDays);
+        String code = codeManager.generateCode(uses, -1, createdBy, rewardCommands, validityDays);
 
-        // 发送兑换码消息，带点击复制功能
+        // 发送兑换码消息，带点击复制和删除功能
         if (sender instanceof org.bukkit.entity.Player) {
             org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
             
@@ -183,6 +184,20 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 code
             ));
             
+            // 创建删除按钮
+            net.md_5.bungee.api.chat.TextComponent deleteComponent = new net.md_5.bungee.api.chat.TextComponent(" §c[删除]");
+            net.md_5.bungee.api.chat.BaseComponent[] deleteHoverText = {
+                new net.md_5.bungee.api.chat.TextComponent("§c点击删除此兑换码")
+            };
+            deleteComponent.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(
+                net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                deleteHoverText
+            ));
+            deleteComponent.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(
+                net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
+                "/be delete " + code
+            ));
+            
             // 构建完整消息
             net.md_5.bungee.api.chat.TextComponent prefixComponent = new net.md_5.bungee.api.chat.TextComponent(
                 configManager.translateColorCodes(configManager.getConfig().getString("messages.prefix", "&8[&6BigExchange&8] "))
@@ -194,7 +209,7 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 " §7，可用次数：" + (uses == -1 ? "无限" : uses) + "，有效期：" + (validityDays == -1 ? "永久有效" : validityDays + "天")
             );
             
-            player.spigot().sendMessage(prefixComponent, textPart, codeComponent, usesPart);
+            player.spigot().sendMessage(prefixComponent, textPart, codeComponent, usesPart, deleteComponent);
         } else {
             // 控制台输出（不支持点击）
             String message = configManager.getMessage("code-generated")
@@ -202,6 +217,144 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                     .replace("%uses%", uses == -1 ? "无限" : String.valueOf(uses))
                     .replace("%validity%", validityDays == -1 ? "永久有效" : validityDays + "天");
             sender.sendMessage(message);
+        }
+        
+        if (rewardCommands != null && !rewardCommands.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("prefix") + "§7奖励命令：§b" + rewardCommands);
+        }
+    }
+
+    /**
+     * 生成带单个玩家使用次数限制的兑换码
+     * 用法：/be genplayer <次数|unlimited> <单个玩家可用次数|unlimited> [奖励命令] [有效期天数]
+     */
+    private void handleGenerateWithPlayerLimit(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(configManager.getMessage("error") + "用法：/be genplayer <次数|unlimited> <单个玩家可用次数|unlimited> [奖励命令] [有效期天数]");
+            sender.sendMessage("§7多命令用分号分隔，如：/abc 123;/qwe 456");
+            return;
+        }
+
+        // 解析总使用次数
+        int uses;
+        if ("unlimited".equalsIgnoreCase(args[1])) {
+            uses = -1;
+        } else {
+            try {
+                uses = Integer.parseInt(args[1]);
+                if (uses < 1) {
+                    sender.sendMessage(configManager.getMessage("error") + "总次数必须大于 0 或为 unlimited");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage(configManager.getMessage("error") + "无效的总次数值");
+                return;
+            }
+        }
+
+        // 解析单个玩家使用次数
+        int playerUses;
+        if ("unlimited".equalsIgnoreCase(args[2])) {
+            playerUses = -1;
+        } else {
+            try {
+                playerUses = Integer.parseInt(args[2]);
+                if (playerUses < 1) {
+                    sender.sendMessage(configManager.getMessage("error") + "单个玩家可用次数必须大于 0 或为 unlimited");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage(configManager.getMessage("error") + "无效的单个玩家可用次数值");
+                return;
+            }
+        }
+
+        // 获取奖励命令和有效期
+        String rewardCommands = null;
+        int validityDays = configManager.getDefaultValidityDays(); // 默认使用配置的有效期
+
+        if (args.length >= 4) {
+            // 先尝试把最后一个参数当作有效期
+            boolean hasValidity = false;
+            int lastIndex = args.length - 1;
+            try {
+                validityDays = Integer.parseInt(args[lastIndex]);
+                hasValidity = true;
+                lastIndex--; // 最后一个参数是有效期，往前移一位
+            } catch (NumberFormatException e) {
+                // 最后一个参数不是数字，没有指定有效期
+            }
+
+            // 剩下的参数组合成奖励命令
+            if (lastIndex >= 3) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 3; i <= lastIndex; i++) {
+                    if (sb.length() > 0) sb.append(" ");
+                    sb.append(args[i]);
+                }
+                rewardCommands = sb.toString();
+            }
+        }
+
+        String createdBy = sender.getName();
+        String code = codeManager.generateCode(uses, playerUses, createdBy, rewardCommands, validityDays);
+
+        // 发送兑换码消息，带点击复制和删除功能
+        if (sender instanceof org.bukkit.entity.Player) {
+            org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+            
+            // 创建可点击的兑换码文本
+            net.md_5.bungee.api.chat.TextComponent codeComponent = new net.md_5.bungee.api.chat.TextComponent(code);
+            
+            // 设置悬停提示
+            net.md_5.bungee.api.chat.BaseComponent[] hoverText = {
+                new net.md_5.bungee.api.chat.TextComponent("§7点击复制兑换码")
+            };
+            codeComponent.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(
+                net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                hoverText
+            ));
+            
+            // 设置点击事件 - 复制到剪贴板
+            codeComponent.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(
+                net.md_5.bungee.api.chat.ClickEvent.Action.COPY_TO_CLIPBOARD,
+                code
+            ));
+            
+            // 创建删除按钮
+            net.md_5.bungee.api.chat.TextComponent deleteComponent = new net.md_5.bungee.api.chat.TextComponent(" §c[删除]");
+            net.md_5.bungee.api.chat.BaseComponent[] deleteHoverText = {
+                new net.md_5.bungee.api.chat.TextComponent("§c点击删除此兑换码")
+            };
+            deleteComponent.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(
+                net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                deleteHoverText
+            ));
+            deleteComponent.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(
+                net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
+                "/be delete " + code
+            ));
+            
+            // 构建完整消息
+            net.md_5.bungee.api.chat.TextComponent prefixComponent = new net.md_5.bungee.api.chat.TextComponent(
+                configManager.translateColorCodes(configManager.getConfig().getString("messages.prefix", "&8[&6BigExchange&8] "))
+            );
+            net.md_5.bungee.api.chat.TextComponent textPart = new net.md_5.bungee.api.chat.TextComponent(
+                "§7已生成兑换码："
+            );
+            net.md_5.bungee.api.chat.TextComponent usesPart = new net.md_5.bungee.api.chat.TextComponent(
+                " §7，总可用次数：" + (uses == -1 ? "无限" : uses) + 
+                "，单玩家次数：" + (playerUses == -1 ? "无限制" : playerUses) +
+                "，有效期：" + (validityDays == -1 ? "永久有效" : validityDays + "天")
+            );
+            
+            player.spigot().sendMessage(prefixComponent, textPart, codeComponent, usesPart, deleteComponent);
+        } else {
+            // 控制台输出（不支持点击）
+            sender.sendMessage("§8[§6BigExchange§8] §7已生成兑换码：§b" + code + 
+                    " §7，总可用次数：" + (uses == -1 ? "无限" : uses) + 
+                    "，单玩家次数：" + (playerUses == -1 ? "无限制" : playerUses) +
+                    "，有效期：" + (validityDays == -1 ? "永久有效" : validityDays + "天"));
         }
         
         if (rewardCommands != null && !rewardCommands.isEmpty()) {
@@ -330,6 +483,8 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         // 过滤参数
         String filter = args.length > 1 ? args[1].toLowerCase() : "all";
         
+        boolean isPlayer = sender instanceof org.bukkit.entity.Player;
+        
         for (DatabaseManager.CodeData code : codes) {
             boolean show = switch (filter) {
                 case "used" -> !code.hasUsesLeft();
@@ -354,8 +509,35 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                     validityInfo = " §7(永久)";
                 }
                 
-                sender.sendMessage(String.format("§7%s §b%s §r- %s 次%s", 
-                        status, code.code, uses, validityInfo));
+                if (isPlayer) {
+                    // 玩家使用可点击的消息
+                    org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+                    
+                    // 创建状态组件
+                    net.md_5.bungee.api.chat.TextComponent statusComponent = new net.md_5.bungee.api.chat.TextComponent("§7" + status + " ");
+                    
+                    // 创建可点击的兑换码组件
+                    net.md_5.bungee.api.chat.TextComponent codeComponent = new net.md_5.bungee.api.chat.TextComponent("§b" + code.code);
+                    codeComponent.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(
+                        net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                        new net.md_5.bungee.api.chat.BaseComponent[]{
+                            new net.md_5.bungee.api.chat.TextComponent("§7点击复制兑换码")
+                        }
+                    ));
+                    codeComponent.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(
+                        net.md_5.bungee.api.chat.ClickEvent.Action.COPY_TO_CLIPBOARD,
+                        code.code
+                    ));
+                    
+                    // 创建剩余信息组件
+                    net.md_5.bungee.api.chat.TextComponent infoComponent = new net.md_5.bungee.api.chat.TextComponent(" §r- " + uses + " 次" + validityInfo);
+                    
+                    player.spigot().sendMessage(statusComponent, codeComponent, infoComponent);
+                } else {
+                    // 控制台使用普通消息
+                    sender.sendMessage(String.format("§7%s §b%s §r- %s 次%s", 
+                            status, code.code, uses, validityInfo));
+                }
             }
         }
         
@@ -383,6 +565,7 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 codeData.usedCount + "/" + codeData.uses));
         sender.sendMessage("§7剩余次数：" + (codeData.isUnlimited() ? "§b无限" : 
                 codeData.getRemainingUses()));
+        sender.sendMessage("§7单玩家次数：" + (codeData.isPlayerUsesUnlimited() ? "§b无限制" : codeData.playerUses));
         sender.sendMessage("§7创建者：" + codeData.createdBy);
         sender.sendMessage("§7创建时间：" + codeData.createdTime.toString());
         
@@ -456,6 +639,208 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
     private void handleReload(CommandSender sender) {
         configManager.reloadConfig();
         sender.sendMessage(configManager.getMessage("success") + "插件配置已重载");
+    }
+
+    /**
+     * 设置兑换码属性（奖励命令、使用次数、有效期）
+     * 用法：/be set <兑换码|ID> <type> <value>
+     * type: uses, validity, reward
+     */
+    private void handleSet(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            sender.sendMessage(configManager.getMessage("error") + "用法：/be set <兑换码|ID> <uses|validity|reward> <值>");
+            sender.sendMessage("§7  uses <次数|unlimited> - 修改使用次数");
+            sender.sendMessage("§7  validity <天数|permanent> - 修改有效期");
+            sender.sendMessage("§7  reward <命令> - 设置奖励命令（覆盖原有）");
+            return;
+        }
+
+        String identifier = args[1];
+        DatabaseManager.CodeData codeData = getCodeByIdentifier(identifier);
+
+        if (codeData == null) {
+            sender.sendMessage(configManager.getMessage("error") + "未找到该兑换码");
+            return;
+        }
+
+        String type = args[2].toLowerCase();
+        // 从第四个参数开始组合值（支持带空格的命令）
+        StringBuilder valueBuilder = new StringBuilder();
+        for (int i = 3; i < args.length; i++) {
+            if (valueBuilder.length() > 0) valueBuilder.append(" ");
+            valueBuilder.append(args[i]);
+        }
+        String value = valueBuilder.toString();
+
+        switch (type) {
+            case "uses" -> {
+                int newUses;
+                if ("unlimited".equalsIgnoreCase(value)) {
+                    newUses = -1;
+                } else {
+                    try {
+                        newUses = Integer.parseInt(value);
+                        if (newUses < 1) {
+                            sender.sendMessage(configManager.getMessage("error") + "次数必须大于 0 或为 unlimited");
+                            return;
+                        }
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage(configManager.getMessage("error") + "无效的次数值");
+                        return;
+                    }
+                }
+                if (codeManager.modifyCodeUses(codeData.id, newUses)) {
+                    sender.sendMessage(configManager.getMessage("success") +
+                            "已修改兑换码 " + codeData.code + " 的使用次数为：" +
+                            (newUses == -1 ? "无限" : newUses));
+                } else {
+                    sender.sendMessage(configManager.getMessage("error") + "修改失败");
+                }
+            }
+            case "validity" -> {
+                int validityDays;
+                if ("permanent".equalsIgnoreCase(value)) {
+                    validityDays = -1;
+                } else {
+                    try {
+                        validityDays = Integer.parseInt(value);
+                        if (validityDays < 1) {
+                            sender.sendMessage(configManager.getMessage("error") + "有效期天数必须大于 0 或为 permanent");
+                            return;
+                        }
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage(configManager.getMessage("error") + "无效的有效期天数");
+                        return;
+                    }
+                }
+                if (codeManager.modifyCodeValidity(codeData.id, validityDays)) {
+                    String validityStr = validityDays == -1 ? "永久有效" : validityDays + "天";
+                    sender.sendMessage(configManager.getMessage("success") +
+                            "已修改兑换码 " + codeData.code + " 的有效期为：" + validityStr);
+                } else {
+                    sender.sendMessage(configManager.getMessage("error") + "修改失败");
+                }
+            }
+            case "reward" -> {
+                if (codeManager.setRewardCommands(codeData.id, value)) {
+                    sender.sendMessage(configManager.getMessage("success") +
+                            "已设置兑换码 " + codeData.code + " 的奖励命令为：§b" + value);
+                } else {
+                    sender.sendMessage(configManager.getMessage("error") + "设置失败");
+                }
+            }
+            default -> {
+                sender.sendMessage(configManager.getMessage("error") + "未知类型：" + type);
+                sender.sendMessage("§7可用类型：uses, validity, reward");
+            }
+        }
+    }
+
+    /**
+     * 管理兑换码的奖励命令
+     * 用法：/be reward <兑换码|ID> <add|remove|list> [命令|索引]
+     */
+    private void handleReward(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(configManager.getMessage("error") + "用法：/be reward <兑换码|ID> <add|remove|list> [命令|索引]");
+            sender.sendMessage("§7  add <命令> - 添加奖励命令");
+            sender.sendMessage("§7  remove <索引> - 删除指定索引的奖励命令");
+            sender.sendMessage("§7  list - 列出所有奖励命令");
+            return;
+        }
+
+        String identifier = args[1];
+        DatabaseManager.CodeData codeData = getCodeByIdentifier(identifier);
+
+        if (codeData == null) {
+            sender.sendMessage(configManager.getMessage("error") + "未找到该兑换码");
+            return;
+        }
+
+        String action = args[2].toLowerCase();
+
+        switch (action) {
+            case "add" -> {
+                if (args.length < 4) {
+                    sender.sendMessage(configManager.getMessage("error") + "用法：/be reward <兑换码|ID> add <命令>");
+                    return;
+                }
+                // 组合命令（支持空格）
+                StringBuilder cmdBuilder = new StringBuilder();
+                for (int i = 3; i < args.length; i++) {
+                    if (cmdBuilder.length() > 0) cmdBuilder.append(" ");
+                    cmdBuilder.append(args[i]);
+                }
+                String command = cmdBuilder.toString();
+
+                if (codeManager.addRewardCommand(codeData.id, command)) {
+                    sender.sendMessage(configManager.getMessage("success") +
+                            "已为兑换码 " + codeData.code + " 添加奖励命令：§b" + command);
+                    // 显示当前所有命令
+                    showRewardCommands(sender, codeData.id);
+                } else {
+                    sender.sendMessage(configManager.getMessage("error") + "添加失败");
+                }
+            }
+            case "remove" -> {
+                if (args.length < 4) {
+                    sender.sendMessage(configManager.getMessage("error") + "用法：/be reward <兑换码|ID> remove <索引>");
+                    sender.sendMessage("§7使用 /be reward <兑换码|ID> list 查看索引");
+                    return;
+                }
+                int index;
+                try {
+                    index = Integer.parseInt(args[3]);
+                    if (index < 0) {
+                        sender.sendMessage(configManager.getMessage("error") + "索引必须大于等于 0");
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(configManager.getMessage("error") + "无效的索引值");
+                    return;
+                }
+
+                java.util.List<String> commands = codeManager.getRewardCommands(codeData.id);
+                if (index >= commands.size()) {
+                    sender.sendMessage(configManager.getMessage("error") + "索引超出范围，当前共有 " + commands.size() + " 条命令");
+                    return;
+                }
+
+                String removedCommand = commands.get(index);
+                if (codeManager.removeRewardCommand(codeData.id, index)) {
+                    sender.sendMessage(configManager.getMessage("success") +
+                            "已删除兑换码 " + codeData.code + " 的奖励命令：§b" + removedCommand);
+                    // 显示剩余命令
+                    showRewardCommands(sender, codeData.id);
+                } else {
+                    sender.sendMessage(configManager.getMessage("error") + "删除失败");
+                }
+            }
+            case "list" -> {
+                showRewardCommands(sender, codeData.id);
+            }
+            default -> {
+                sender.sendMessage(configManager.getMessage("error") + "未知操作：" + action);
+                sender.sendMessage("§7可用操作：add, remove, list");
+            }
+        }
+    }
+
+    /**
+     * 显示兑换码的奖励命令列表
+     */
+    private void showRewardCommands(CommandSender sender, int codeId) {
+        java.util.List<String> commands = codeManager.getRewardCommands(codeId);
+        if (commands.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("prefix") + "§7该兑换码暂无奖励命令");
+            return;
+        }
+
+        sender.sendMessage(configManager.getMessage("prefix") + "§6=== 奖励命令列表 ===");
+        for (int i = 0; i < commands.size(); i++) {
+            sender.sendMessage("§7[" + i + "] §b" + commands.get(i));
+        }
+        sender.sendMessage(configManager.getMessage("prefix") + "§6==================");
     }
 
     /**
@@ -632,6 +1017,8 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(configManager.getMessage("prefix") + "§6=== BigExchange 帮助 ===");
         sender.sendMessage("§7/be generate <次数|unlimited> [奖励命令] [有效期] §8- 生成兑换码");
+        sender.sendMessage("§7/be genplayer <总次数|unlimited> <单玩家次数|unlimited> [奖励命令] [有效期] §8- 生成带单玩家限制的兑换码");
+        sender.sendMessage("§7/be genform §8- 打开生成兑换码表单（基岩版）");
         sender.sendMessage("§7/be delete <兑换码|ID> §8- 删除兑换码");
         sender.sendMessage("§7/be modify <兑换码|ID> <次数> §8- 修改次数");
         sender.sendMessage("§7/be validity <兑换码|ID> <天数> §8- 修改有效期");
@@ -642,7 +1029,32 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         sender.sendMessage("§7/be clear <all|codes|history> §8- 清空数据");
         sender.sendMessage("§7/be backup <sqlite|mysql|both> §8- 备份数据库");
         sender.sendMessage("§7/be reload §8- 重载配置");
+        sender.sendMessage("§7/be set <兑换码|ID> <uses|validity|reward> <值> §8- 设置兑换码属性");
+        sender.sendMessage("§7/be reward <兑换码|ID> <add|remove|list> [命令|索引] §8- 管理奖励命令");
         sender.sendMessage(configManager.getMessage("prefix") + "§6======================");
+    }
+
+    /**
+     * 处理生成表单命令（基岩版管理员使用）
+     */
+    private void handleGenerateForm(CommandSender sender) {
+        if (!(sender instanceof org.bukkit.entity.Player)) {
+            sender.sendMessage(configManager.getMessage("error") + "此命令只能由玩家执行");
+            return;
+        }
+        
+        org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+        
+        // 获取 FormListener 并发送生成表单
+        // 需要通过插件实例获取 FormListener
+        top.mcocet.bigExchange.listener.FormListener formListener = 
+            plugin.getFormListener();
+        
+        if (formListener != null) {
+            formListener.sendGenerateForm(player);
+        } else {
+            sender.sendMessage(configManager.getMessage("error") + "表单功能不可用");
+        }
     }
 
     private boolean checkPermission(CommandSender sender, String permission) {
@@ -678,8 +1090,8 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                                                String[] args) {
         if (args.length == 1) {
             return getCompletions(args[0], Arrays.asList(
-                    "generate", "delete", "modify", "validity", "list", "info", 
-                    "history", "activate", "clear", "backup", "reload"
+                    "generate", "genplayer", "genform", "delete", "modify", "validity", "list", "info",
+                    "history", "activate", "clear", "backup", "reload", "set", "reward"
             ));
         }
 
@@ -689,6 +1101,12 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 return getCompletions(args[1], Arrays.asList("all", "active", "used", "expired"));
             }
             if (subCommand.equals("generate")) {
+                return Arrays.asList("1", "2", "5", "10", "unlimited");
+            }
+            if (subCommand.equals("genplayer")) {
+                return Arrays.asList("1", "2", "5", "10", "unlimited");
+            }
+            if (subCommand.equals("genplayer")) {
                 return Arrays.asList("1", "2", "5", "10", "unlimited");
             }
             if (subCommand.equals("clear")) {
@@ -702,9 +1120,33 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[0].equalsIgnoreCase("modify")) {
             return Arrays.asList("1", "2", "5", "10", "unlimited");
         }
+        if (args.length == 3 && args[0].equalsIgnoreCase("genplayer")) {
+            return Arrays.asList("1", "2", "5", "10", "unlimited");
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("genplayer")) {
+            return Arrays.asList("1", "2", "5", "10", "unlimited");
+        }
         
         if (args.length == 3 && args[0].equalsIgnoreCase("validity")) {
             return Arrays.asList("1", "7", "30", "permanent");
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
+            return getCompletions(args[1], Arrays.asList("uses", "validity", "reward"));
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
+            String type = args[1].toLowerCase();
+            if (type.equals("uses")) {
+                return Arrays.asList("1", "2", "5", "10", "unlimited");
+            }
+            if (type.equals("validity")) {
+                return Arrays.asList("1", "7", "30", "permanent");
+            }
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("reward")) {
+            return getCompletions(args[1], Arrays.asList("add", "remove", "list"));
         }
 
         return null;

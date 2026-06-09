@@ -192,6 +192,15 @@ public class ConfigManager {
         return "geyser".equalsIgnoreCase(getFormType());
     }
 
+    /**
+     * 检查是否使用网易 BaseAPI 表单
+     * @return true 表示使用网易版表单
+     */
+    public boolean isNeteaseForm() {
+        String type = getFormType();
+        return "netease".equalsIgnoreCase(type) || "auto".equalsIgnoreCase(type);
+    }
+
     public String getFormRedeemTitle() {
         return translateColorCodes(config.getString("form.redeem-title", "&6 兑换码兑换"));
     }
@@ -202,6 +211,16 @@ public class ConfigManager {
 
     public String getFormRedeemPlaceholder() {
         return config.getString("form.redeem-placeholder", "XXXXXX-XXXXXXXXXX");
+    }
+
+    /**
+     * 获取表单输入框数量
+     * @return 输入框数量（默认5，范围1-20）
+     */
+    public int getFormRedeemInputCount() {
+        int count = config.getInt("form.redeem-input-count", 5);
+        // 限制在1-20之间
+        return Math.max(1, Math.min(20, count));
     }
 
     public String getFormRedeemButtonConfirm() {
@@ -298,6 +317,14 @@ public class ConfigManager {
      */
     public java.util.List<String> getPurchaseRewardCommands() {
         return config.getStringList("purchase.reward-commands");
+    }
+
+    /**
+     * 获取购买命令列表（购买成功后执行）
+     * @return 购买命令列表
+     */
+    public java.util.List<String> getPurchaseCommands() {
+        return config.getStringList("purchase.commands");
     }
 
     /**

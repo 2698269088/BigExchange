@@ -103,14 +103,22 @@ public class DatabaseManager {
     /**
      * 保存兑换码
      */
-    public void saveCode(String code, String codeHash, int uses, String createdBy, String rewardCommands,
+    public void saveCode(String code, String codeHash, int uses, int playerUses, String createdBy, String rewardCommands,
                         java.sql.Timestamp expirationTime, int validityDays) {
         if (activeDatabaseType == DatabaseType.SQLITE || activeDatabaseType == DatabaseType.BOTH) {
-            sqliteHandler.saveCode(code, codeHash, uses, createdBy, rewardCommands, expirationTime, validityDays);
+            sqliteHandler.saveCode(code, codeHash, uses, playerUses, createdBy, rewardCommands, expirationTime, validityDays);
         }
         if (activeDatabaseType == DatabaseType.MYSQL || activeDatabaseType == DatabaseType.BOTH) {
-            mysqlHandler.saveCode(code, codeHash, uses, createdBy, rewardCommands, expirationTime, validityDays);
+            mysqlHandler.saveCode(code, codeHash, uses, playerUses, createdBy, rewardCommands, expirationTime, validityDays);
         }
+    }
+
+    /**
+     * 保存兑换码（兼容旧版本，player_uses 默认 -1）
+     */
+    public void saveCode(String code, String codeHash, int uses, String createdBy, String rewardCommands,
+                        java.sql.Timestamp expirationTime, int validityDays) {
+        saveCode(code, codeHash, uses, -1, createdBy, rewardCommands, expirationTime, validityDays);
     }
 
     /**
@@ -177,6 +185,20 @@ public class DatabaseManager {
     }
 
     /**
+     * 更新兑换码奖励命令
+     */
+    public boolean updateRewardCommands(int codeId, String rewardCommands) {
+        boolean success = true;
+        if (activeDatabaseType == DatabaseType.SQLITE || activeDatabaseType == DatabaseType.BOTH) {
+            success &= sqliteHandler.updateRewardCommands(codeId, rewardCommands);
+        }
+        if (activeDatabaseType == DatabaseType.MYSQL || activeDatabaseType == DatabaseType.BOTH) {
+            success &= mysqlHandler.updateRewardCommands(codeId, rewardCommands);
+        }
+        return success;
+    }
+
+    /**
      * 增加已使用次数
      */
     public boolean incrementUsedCount(int codeId) {
@@ -188,6 +210,26 @@ public class DatabaseManager {
             success &= mysqlHandler.incrementUsedCount(codeId);
         }
         return success;
+    }
+
+    /**
+     * 增加已使用次数（带乐观锁检查）
+     * @return 更新后的 usedCount，如果更新失败返回 -1
+     */
+    public int incrementUsedCountWithCheck(int codeId) {
+        if (activeDatabaseType == DatabaseType.SQLITE || activeDatabaseType == DatabaseType.BOTH) {
+            int result = sqliteHandler.incrementUsedCountWithCheck(codeId);
+            if (result != -1) {
+                if (activeDatabaseType == DatabaseType.BOTH) {
+                    mysqlHandler.incrementUsedCount(codeId); // 同步到 MySQL
+                }
+                return result;
+            }
+        }
+        if (activeDatabaseType == DatabaseType.MYSQL) {
+            return mysqlHandler.incrementUsedCountWithCheck(codeId);
+        }
+        return -1;
     }
 
     /**
@@ -267,6 +309,19 @@ public class DatabaseManager {
     }
 
     /**
+     * 获取玩家使用次数
+     */
+    public int getPlayerUsageCount(int codeId, String playerUuid) {
+        if (activeDatabaseType == DatabaseType.SQLITE || activeDatabaseType == DatabaseType.BOTH) {
+            return sqliteHandler.getPlayerUsageCount(codeId, playerUuid);
+        }
+        if (activeDatabaseType == DatabaseType.MYSQL) {
+            return mysqlHandler.getPlayerUsageCount(codeId, playerUuid);
+        }
+        return 0;
+    }
+
+    /**
      * 执行数据库备份
      */
     public void performBackup() {
@@ -333,6 +388,7 @@ public class DatabaseManager {
         public final String codeHash;
         public final int uses;
         public final int usedCount;
+        public final int playerUses; // 单个玩家可用次数（-1 表示无限制）
         public final String createdBy;
         public final java.sql.Timestamp createdTime;
         public final boolean isActive;
@@ -341,7 +397,7 @@ public class DatabaseManager {
         public final java.sql.Timestamp expirationTime; // 过期时间
         public final int validityDays; // 有效期天数（-1 表示永久）
 
-        public CodeData(int id, String code, String codeHash, int uses, int usedCount,
+        public CodeData(int id, String code, String codeHash, int uses, int usedCount, int playerUses,
                        String createdBy, java.sql.Timestamp createdTime, 
                        boolean isActive, java.sql.Timestamp lastUsed, String rewardCommands,
                        java.sql.Timestamp expirationTime, int validityDays) {
@@ -350,6 +406,7 @@ public class DatabaseManager {
             this.codeHash = codeHash;
             this.uses = uses;
             this.usedCount = usedCount;
+            this.playerUses = playerUses;
             this.createdBy = createdBy;
             this.createdTime = createdTime;
             this.isActive = isActive;
@@ -362,8 +419,16 @@ public class DatabaseManager {
         // 兼容旧版本构造函数
         public CodeData(int id, String code, String codeHash, int uses, int usedCount,
                        String createdBy, java.sql.Timestamp createdTime, 
+                       boolean isActive, java.sql.Timestamp lastUsed, String rewardCommands,
+                       java.sql.Timestamp expirationTime, int validityDays) {
+            this(id, code, codeHash, uses, usedCount, -1, createdBy, createdTime, isActive, lastUsed, rewardCommands, expirationTime, validityDays);
+        }
+
+        // 兼容旧版本构造函数
+        public CodeData(int id, String code, String codeHash, int uses, int usedCount,
+                       String createdBy, java.sql.Timestamp createdTime, 
                        boolean isActive, java.sql.Timestamp lastUsed, String rewardCommands) {
-            this(id, code, codeHash, uses, usedCount, createdBy, createdTime, isActive, lastUsed, rewardCommands, null, -1);
+            this(id, code, codeHash, uses, usedCount, -1, createdBy, createdTime, isActive, lastUsed, rewardCommands, null, -1);
         }
 
         public int getRemainingUses() {
@@ -376,6 +441,14 @@ public class DatabaseManager {
 
         public boolean hasUsesLeft() {
             return uses == -1 || usedCount < uses;
+        }
+
+        public boolean isPlayerUsesUnlimited() {
+            return playerUses == -1;
+        }
+
+        public boolean hasPlayerUsesLeft(int playerUsageCount) {
+            return playerUses == -1 || playerUsageCount < playerUses;
         }
 
         public boolean isExpired() {

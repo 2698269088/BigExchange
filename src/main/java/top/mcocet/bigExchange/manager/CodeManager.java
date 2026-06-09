@@ -34,12 +34,13 @@ public class CodeManager {
      * 生成随机兑换码
      * 格式：6 位 -10 位，共 16 位字符（包含大小写字母和数字）
      * @param uses 使用次数（-1 为无限次）
+     * @param playerUses 单个玩家可用次数（-1 为无限制）
      * @param createdBy 创建者
      * @param rewardCommands 奖励命令（多个命令用分号分隔）
      * @param validityDays 有效期天数（-1 表示永久）
      * @return 生成的兑换码
      */
-    public String generateCode(int uses, String createdBy, String rewardCommands, int validityDays) {
+    public String generateCode(int uses, int playerUses, String createdBy, String rewardCommands, int validityDays) {
         int firstLength = configManager.getCodeFirstLength(); // 默认 6
         int secondLength = configManager.getCodeSecondLength(); // 默认 10
         String separator = configManager.getSeparator(); // 默认 "-"
@@ -73,12 +74,20 @@ public class CodeManager {
 
         // 保存兑换码到数据库
         String codeHash = hashCode(code);
-        databaseManager.saveCode(code, codeHash, uses, createdBy, rewardCommands, expirationTime, validityDays);
+        databaseManager.saveCode(code, codeHash, uses, playerUses, createdBy, rewardCommands, expirationTime, validityDays);
 
         logManager.info("生成新兑换码：" + code + " (可用次数：" + (uses == -1 ? "无限" : uses) + 
+                       ", 单玩家次数：" + (playerUses == -1 ? "无限制" : playerUses) +
                        ", 有效期：" + (validityDays == -1 ? "永久" : validityDays + "天") + 
                        ", 奖励命令：" + rewardCommands + ")");
         return code;
+    }
+
+    /**
+     * 生成随机兑换码（兼容旧版本，playerUses 默认 -1）
+     */
+    public String generateCode(int uses, String createdBy, String rewardCommands, int validityDays) {
+        return generateCode(uses, -1, createdBy, rewardCommands, validityDays);
     }
 
     /**
@@ -139,35 +148,45 @@ public class CodeManager {
      */
     public UseResult useCode(String code, java.util.UUID playerUuid, String playerName) {
         VerifyResult verifyResult = verifyCode(code);
-        
+
         if (!verifyResult.isValid) {
             return new UseResult(false, verifyResult.status, null);
         }
 
         DatabaseManager.CodeData codeData = verifyResult.codeData;
-        
+
+        // 检查单个玩家使用次数限制
+        int playerUsageCount = databaseManager.getPlayerUsageCount(codeData.id, playerUuid.toString());
+        if (!codeData.hasPlayerUsesLeft(playerUsageCount)) {
+            return new UseResult(false, VerifyResult.VerifyStatus.NO_USES_LEFT, codeData);
+        }
+
+        // 使用带乐观锁的更新
+        int newUsedCount = databaseManager.incrementUsedCountWithCheck(codeData.id);
+        if (newUsedCount == -1) {
+            // 更新失败，说明在验证和更新之间被其他线程使用了
+            return new UseResult(false, VerifyResult.VerifyStatus.NO_USES_LEFT, codeData);
+        }
+
         // 记录使用
-        databaseManager.incrementUsedCount(codeData.id);
         databaseManager.recordUsage(codeData.id, playerUuid, playerName);
-        
-        // 重新读取最新的兑换码数据（因为 usedCount 已经改变）
+
+        // 重新读取最新的兑换码数据
         DatabaseManager.CodeData updatedCodeData = databaseManager.getCodeData(code);
-        
+
         // 如果次数用完，自动停用
-        if (updatedCodeData != null && !updatedCodeData.isUnlimited() && updatedCodeData.usedCount >= updatedCodeData.uses) {
+        if (updatedCodeData != null && !updatedCodeData.isUnlimited() && newUsedCount >= updatedCodeData.uses) {
             databaseManager.deactivateCode(codeData.id);
         }
 
         // 执行奖励命令
         if (updatedCodeData != null) {
             String rewardCommands = updatedCodeData.rewardCommands;
-            
-            // 如果兑换码没有指定奖励命令，则从配置中随机选择一个
+
             if ((rewardCommands == null || rewardCommands.isEmpty()) && configManager.isDefaultRewardEnabled()) {
                 rewardCommands = getRandomDefaultRewardCommand(playerName);
             }
-            
-            // 执行奖励命令
+
             if (rewardCommands != null && !rewardCommands.isEmpty()) {
                 executeRewardCommands(rewardCommands, playerName);
             }
@@ -257,6 +276,100 @@ public class CodeManager {
      */
     public boolean modifyCodeValidity(int codeId, int validityDays) {
         return databaseManager.updateCodeValidity(codeId, validityDays);
+    }
+
+    /**
+     * 设置兑换码奖励命令（覆盖原有）
+     * @param codeId 兑换码 ID
+     * @param rewardCommands 奖励命令（分号分隔）
+     * @return 是否成功
+     */
+    public boolean setRewardCommands(int codeId, String rewardCommands) {
+        return databaseManager.updateRewardCommands(codeId, rewardCommands);
+    }
+
+    /**
+     * 添加奖励命令到兑换码
+     * @param codeId 兑换码 ID
+     * @param command 要添加的命令
+     * @return 是否成功
+     */
+    public boolean addRewardCommand(int codeId, String command) {
+        DatabaseManager.CodeData codeData = getCodeDataById(codeId);
+        if (codeData == null) return false;
+
+        String currentCommands = codeData.rewardCommands;
+        String newCommands;
+        if (currentCommands == null || currentCommands.isEmpty()) {
+            newCommands = command;
+        } else {
+            newCommands = currentCommands + ";" + command;
+        }
+        return databaseManager.updateRewardCommands(codeId, newCommands);
+    }
+
+    /**
+     * 从兑换码中删除奖励命令
+     * @param codeId 兑换码 ID
+     * @param commandIndex 命令索引（从 0 开始）
+     * @return 是否成功
+     */
+    public boolean removeRewardCommand(int codeId, int commandIndex) {
+        DatabaseManager.CodeData codeData = getCodeDataById(codeId);
+        if (codeData == null || codeData.rewardCommands == null || codeData.rewardCommands.isEmpty()) {
+            return false;
+        }
+
+        String[] commands = codeData.rewardCommands.split(";");
+        if (commandIndex < 0 || commandIndex >= commands.length) {
+            return false;
+        }
+
+        StringBuilder newCommands = new StringBuilder();
+        for (int i = 0; i < commands.length; i++) {
+            if (i != commandIndex) {
+                if (newCommands.length() > 0) {
+                    newCommands.append(";");
+                }
+                newCommands.append(commands[i].trim());
+            }
+        }
+        return databaseManager.updateRewardCommands(codeId, newCommands.toString());
+    }
+
+    /**
+     * 获取兑换码的奖励命令列表
+     * @param codeId 兑换码 ID
+     * @return 命令列表，如果无则返回空列表
+     */
+    public java.util.List<String> getRewardCommands(int codeId) {
+        DatabaseManager.CodeData codeData = getCodeDataById(codeId);
+        if (codeData == null || codeData.rewardCommands == null || codeData.rewardCommands.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        java.util.List<String> commands = new java.util.ArrayList<>();
+        for (String cmd : codeData.rewardCommands.split(";")) {
+            String trimmed = cmd.trim();
+            if (!trimmed.isEmpty()) {
+                commands.add(trimmed);
+            }
+        }
+        return commands;
+    }
+
+    /**
+     * 根据 ID 获取兑换码数据
+     * @param codeId 兑换码 ID
+     * @return 兑换码数据
+     */
+    private DatabaseManager.CodeData getCodeDataById(int codeId) {
+        for (DatabaseManager.CodeData code : databaseManager.getAllCodes()) {
+            if (code.id == codeId) {
+                return code;
+            }
+        }
+        return null;
     }
 
     /**

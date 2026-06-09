@@ -6,7 +6,7 @@
 
     <groupId>top.mcocet</groupId>
     <artifactId>BigExchange</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
     <packaging>jar</packaging>
 
     <name>BigExchange</name>
@@ -77,6 +77,11 @@
             <id>codemc-repo</id>
             <url>https://repo.codemc.io/repository/maven-public/</url>
         </repository>
+        <!-- 网易 BaseAPI 仓库（如果需要从 Maven 仓库获取） -->
+        <repository>
+            <id>baseapi-repo</id>
+            <url>https://repo.example.com/baseapi/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -112,6 +117,15 @@
             <version>1.1.1</version>
             <scope>provided</scope>
         </dependency>
+        <!-- 网易 BaseAPI 依赖（可选，通过反射调用） -->
+        <!-- 
+        <dependency>
+            <groupId>com.xigua</groupId>
+            <artifactId>BaseAPI</artifactId>
+            <version>1.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+        -->
         <dependency>
             <groupId>net.wesjd</groupId>
             <artifactId>anvilgui</artifactId>

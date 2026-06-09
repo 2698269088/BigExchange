@@ -49,72 +49,64 @@ public class RedeemCommand implements CommandExecutor {
             return true;
         }
     
-        // 合并所有参数作为兑换码（防止有空格）
-        StringBuilder codeBuilder = new StringBuilder();
+        // 将参数按空格分割为多个兑换码（支持一次输入多个）
+        java.util.List<String> codes = new java.util.ArrayList<>();
         for (String arg : args) {
-            if (codeBuilder.length() > 0) {
-                codeBuilder.append(" ");
+            // 按空格分割每个参数（处理玩家可能用空格分隔的情况）
+            String[] parts = arg.split("\\s+");
+            for (String part : parts) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty()) {
+                    codes.add(trimmed);
+                }
             }
-            codeBuilder.append(arg);
         }
-        String code = codeBuilder.toString().trim();
-        logManager.fine("玩家输入的兑换码：" + code);
-    
-        // 处理兑换码
-        logManager.fine("开始验证并使用兑换码...");
-        CodeManager.UseResult useResult = codeManager.useCode(code, player.getUniqueId(), player.getName());
-        boolean success = useResult.success;
-        logManager.fine("兑换码使用结果：" + (success ? "成功" : "失败"));
         
-        if (success) {
-            // 延迟 1 tick 发送消息，确保奖励命令先执行（Folia 兼容）
-            FoliaScheduler.runSyncLater(codeManager.getPlugin(), () -> {
-                player.sendMessage(configManager.getMessage("code-redeemed"));
-                
-                // 显示剩余次数（如果不是无限次）
-                if (useResult.codeData != null && !useResult.codeData.isUnlimited()) {
-                    int remaining = useResult.codeData.getRemainingUses();
-                    if (remaining > 0) {
-                        java.util.Map<String, String> placeholders = new java.util.HashMap<>();
-                        placeholders.put("%remaining%", String.valueOf(remaining));
-                        placeholders.put("%total%", String.valueOf(useResult.codeData.uses));
-                        player.sendMessage(configManager.getMessage("code-remaining-uses", placeholders));
-                    }
-                }
-                
-                // 显示有效期信息
-                if (useResult.codeData != null && useResult.codeData.hasValidity()) {
-                    java.util.Map<String, String> placeholders = new java.util.HashMap<>();
-                    placeholders.put("%remaining_time%", useResult.codeData.getFormattedRemainingTime());
-                    player.sendMessage(configManager.getMessage("code-validity-remaining", placeholders));
-                }
-            }, 1L);
-        } else {
-            CodeManager.VerifyResult result = codeManager.verifyCode(code);
-            if (!result.isValid) {
-                switch (result.status) {
-                    case NOT_FOUND, INVALID_FORMAT -> 
-                        player.sendMessage(configManager.getMessage("code-invalid"));
-                    case INACTIVE -> 
-                        player.sendMessage(configManager.getMessage("code-expired"));
-                    case EXPIRED -> 
-                        player.sendMessage(configManager.getMessage("code-expired"));
-                    case NO_USES_LEFT -> {
-                        // 显示详细的使用限制信息
-                        if (result.codeData != null) {
-                            java.util.Map<String, String> placeholders = new java.util.HashMap<>();
-                            placeholders.put("%used%", String.valueOf(result.codeData.usedCount));
-                            placeholders.put("%total%", result.codeData.isUnlimited() ? "∞" : String.valueOf(result.codeData.uses));
-                            player.sendMessage(configManager.getMessage("code-limit-reached", placeholders));
-                        } else {
-                            player.sendMessage(configManager.getMessage("code-no-uses"));
-                        }
-                    }
-                    default -> 
-                        player.sendMessage(configManager.getMessage("error"));
-                }
+        logManager.fine("玩家输入的兑换码数量：" + codes.size());
+        
+        if (codes.isEmpty()) {
+            player.sendMessage(configManager.getMessage("prefix") + "§c请输入兑换码！");
+            return true;
+        }
+        
+        // 限制最多处理20个兑换码
+        if (codes.size() > 20) {
+            player.sendMessage(configManager.getMessage("prefix") + "§c一次最多兑换20个兑换码！");
+            codes = codes.subList(0, 20);
+        }
+        
+        // 处理多个兑换码
+        int successCount = 0;
+        int failCount = 0;
+        java.util.List<String> failedCodes = new java.util.ArrayList<>();
+        
+        for (String code : codes) {
+            logManager.fine("处理兑换码：" + code);
+            CodeManager.UseResult useResult = codeManager.useCode(code, player.getUniqueId(), player.getName());
+            
+            if (useResult.success) {
+                successCount++;
+            } else {
+                failCount++;
+                failedCodes.add(code);
             }
         }
+        
+        // 将变量设置为有效 final，以便在 lambda 中使用
+        final int finalSuccessCount = successCount;
+        final int finalFailCount = failCount;
+        final java.util.List<String> finalFailedCodes = failedCodes;
+        final Player finalPlayer = player;
+        
+        // 延迟发送结果消息（Folia 兼容）
+        FoliaScheduler.runSyncLater(codeManager.getPlugin(), () -> {
+            if (finalSuccessCount > 0) {
+                finalPlayer.sendMessage(configManager.getMessage("prefix") + "§a成功兑换 " + finalSuccessCount + " 个兑换码！");
+            }
+            if (finalFailCount > 0) {
+                finalPlayer.sendMessage(configManager.getMessage("prefix") + "§c失败 " + finalFailCount + " 个兑换码：" + String.join(", ", finalFailedCodes));
+            }
+        }, 1L);
 
         return true;
     }

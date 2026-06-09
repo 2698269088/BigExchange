@@ -1,5 +1,5 @@
 name: BigExchange
-version: '1.4'
+version: '1.5'
 main: top.mcocet.bigExchange.BigExchange
 api-version: '1.18'
 description: 随机兑换码生成插件，支持加密认证、SQLite MySQL 数据库管理，支持 Folia
@@ -17,8 +17,8 @@ commands:
     permission: bigexchange.admin
   redeem:
     description: 兑换码兑换命令
-    usage: /<command> [兑换码]
-    aliases: [cdkey, code]
+    usage: /<command> [兑换码...] (支持空格分隔多个兑换码)
+    aliases: [cdkey, code, cdk]
   purchase:
     description: 购买兑换码命令
     usage: /<command>

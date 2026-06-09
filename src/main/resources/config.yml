@@ -95,14 +95,14 @@ messages:
 form:
   # 是否启用基岩版表单 UI（true/false）
   enabled: true
-  # 表单类型：geyser (国际版 Geyser/Floodgate)
-  # 插件会自动检测 Floodgate，如果没有安装则使用聊天栏输入
-  type: "geyser"
+  # 表单类型：geyser (国际版 Geyser/Floodgate) | netease (网易中国版 BaseAPI)
+  # 插件会自动检测 Floodgate/BaseAPI，如果没有安装则使用聊天栏输入
+  type: "auto"
   
   # Java 版 AnvilGUI 配置
   # 是否启用 AnvilGUI 界面（true/false）
   # 启用后，Java 版玩家使用 /redeem 命令时会打开铁砧界面而不是聊天栏提示
-  # 注意：Folia/Luminol 服务器不支持 AnvilGUI，会自动降级为聊天栏输入
+  # 注意：Folia/Luminol 服务器不支持 AnvilGUI，会自动降级为聊天栏输入（1.21.11也尚未适配）
   anvil-gui-enabled: true
   # 表单标题（支持颜色代码）
   redeem-title: "&6 兑换码兑换"
@@ -110,6 +110,8 @@ form:
   redeem-content: "&e 请输入您的兑换码：\n&7 格式：XXXXXX-XXXXXXXXXX"
   # 输入框占位符
   redeem-placeholder: "XXXXXX-XXXXXXXXXX"
+  # 表单输入框数量（用于一次兑换多个兑换码，默认5个，最大20个）
+  redeem-input-count: 5
   # 成功按钮（已废弃，BaseAPI 不显示按钮）
   redeem-button-confirm: "&a 确认兑换"
   # 取消按钮（已废弃，BaseAPI 不显示按钮）
@@ -123,7 +125,7 @@ form:
 # 购买兑换码配置
 purchase:
   # 是否启用购买功能
-  enabled: true
+  enabled: false
   # 购买价格（需要集成经济插件才能生效，目前暂时免费）
   price: 100
   # 购买的兑换码可用次数
@@ -138,6 +140,11 @@ purchase:
     - "gave %player% golden_apple 5"
     - "gave %player% iron_ingot 12"
     - "gave %player% diamond_block 64"
+  # 购买指令列表（购买成功后执行，支持多条命令）
+  # 支持占位符：%player%（玩家名）、%price%（购买金额）
+  commands:
+    - "broadcast %player% 花费 %price% 购买了一个兑换码！"
+    - "give %player% paper 1"
 
 # Craftconomy3 数据库配置（用于扣除玩家余额）
 craftconomy3:

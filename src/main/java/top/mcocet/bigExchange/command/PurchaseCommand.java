@@ -9,7 +9,9 @@ import top.mcocet.bigExchange.manager.CodeManager;
 import top.mcocet.bigExchange.manager.ConfigManager;
 import top.mcocet.bigExchange.manager.LogManager;
 import top.mcocet.bigExchange.manager.craftconomy3.Craftconomy3MySQLHandler;
+import top.mcocet.bigExchange.util.FoliaScheduler;
 
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -94,6 +96,9 @@ public class PurchaseCommand implements CommandExecutor {
             .replace("%uses%", uses == -1 ? "无限" : String.valueOf(uses))
             .replace("%validity%", validityDays == -1 ? "永久有效" : validityDays + "天"));
         
+        // 执行购买命令
+        executePurchaseCommands(player, price);
+        
         logManager.info("玩家 " + player.getName() + " 购买了兑换码：" + code);
         
         return true;
@@ -135,5 +140,40 @@ public class PurchaseCommand implements CommandExecutor {
         // 替换占位符 %player% 和 {player}
         return command.replace("%player%", playerName)
                      .replace("{player}", playerName);
+    }
+    
+    /**
+     * 执行购买命令（购买成功后执行）
+     * @param player 玩家
+     * @param price 购买金额
+     */
+    private void executePurchaseCommands(Player player, double price) {
+        List<String> commands = configManager.getPurchaseCommands();
+        if (commands == null || commands.isEmpty()) {
+            return;
+        }
+        
+        String playerName = player.getName();
+        String priceStr = String.valueOf(price);
+        
+        for (String cmd : commands) {
+            // 替换占位符：%player%（玩家名）、%price%（购买金额）
+            String finalCommand = cmd.replace("%player%", playerName)
+                                    .replace("{player}", playerName)
+                                    .replace("%price%", priceStr);
+            
+            // 异步执行命令（Folia 兼容）
+            FoliaScheduler.runSync(plugin, () -> {
+                try {
+                    plugin.getServer().dispatchCommand(
+                        plugin.getServer().getConsoleSender(),
+                        finalCommand
+                    );
+                    logManager.fine("执行购买命令成功：" + finalCommand);
+                } catch (Exception e) {
+                    logManager.warning("执行购买命令失败：" + finalCommand + " - " + e.getMessage());
+                }
+            });
+        }
     }
 }
