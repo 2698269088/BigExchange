@@ -3,6 +3,7 @@ package top.mcocet.bigExchange;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import top.mcocet.bigExchange.api.ExchangeAPI;
+import top.mcocet.bigExchange.api.HttpApiServer;
 import top.mcocet.bigExchange.command.CommandHandler;
 import top.mcocet.bigExchange.command.Craftconomy3QueryCommand;
 import top.mcocet.bigExchange.command.PurchaseCommand;
@@ -22,6 +23,7 @@ public final class BigExchange extends JavaPlugin {
     private DatabaseManager databaseManager;
     private CodeManager codeManager;
     private ExchangeAPI exchangeAPI;
+    private HttpApiServer httpApiServer;
     private ChatInputListener chatInputListener;
     private FormListener formListener;
     private LogManager logManager;
@@ -79,6 +81,10 @@ public final class BigExchange extends JavaPlugin {
         exchangeAPI = new ExchangeAPI(codeManager, databaseManager);
         logManager.info("API 已就绪");
         
+        // 启动 HTTP API 服务器
+        httpApiServer = new HttpApiServer(this, configManager, exchangeAPI);
+        httpApiServer.start();
+        
         // 启动过期检查任务
         int checkInterval = configManager.getAutoCheckInterval();
         if (checkInterval > 0) {
@@ -116,6 +122,11 @@ public final class BigExchange extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // 停止 HTTP API 服务器
+        if (httpApiServer != null) {
+            httpApiServer.stop();
+        }
+        
         // 停止过期检查任务
         if (expirationTask != null) {
             expirationTask.stop();
@@ -219,6 +230,14 @@ public final class BigExchange extends JavaPlugin {
      */
     public ExchangeAPI getExchangeAPI() {
         return exchangeAPI;
+    }
+
+    /**
+     * 获取 HTTP API 服务器
+     * @return HTTP API 服务器
+     */
+    public HttpApiServer getHttpApiServer() {
+        return httpApiServer;
     }
 
     /**

@@ -408,6 +408,34 @@ public class ConfigManager {
     }
 
     // ============================================
+    // HTTP API 配置
+    // ============================================
+
+    /**
+     * 检查是否启用 HTTP API
+     * @return true 表示启用
+     */
+    public boolean isHttpApiEnabled() {
+        return config.getBoolean("http-api.enabled", false);
+    }
+
+    /**
+     * 获取 HTTP API 监听端口
+     * @return 端口号
+     */
+    public int getHttpApiPort() {
+        return config.getInt("http-api.port", 8080);
+    }
+
+    /**
+     * 获取 HTTP API Key
+     * @return API Key
+     */
+    public String getHttpApiKey() {
+        return config.getString("http-api.key", "");
+    }
+
+    // ============================================
     // 默认奖励命令配置
     // ============================================
 

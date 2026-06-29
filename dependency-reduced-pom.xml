@@ -4,7 +4,7 @@
   <groupId>top.mcocet</groupId>
   <artifactId>BigExchange</artifactId>
   <name>BigExchange</name>
-  <version>1.3</version>
+  <version>1.6</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -42,6 +42,10 @@
       <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
     </repository>
     <repository>
+      <id>papermc-repo</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+    <repository>
       <id>opencollab-release-repo</id>
       <url>https://repo.opencollab.dev/maven-releases/</url>
     </repository>
@@ -57,8 +61,18 @@
       <id>codemc-repo</id>
       <url>https://repo.codemc.io/repository/maven-public/</url>
     </repository>
+    <repository>
+      <id>baseapi-repo</id>
+      <url>https://repo.example.com/baseapi/</url>
+    </repository>
   </repositories>
   <dependencies>
+    <dependency>
+      <groupId>dev.folia</groupId>
+      <artifactId>folia-api</artifactId>
+      <version>1.20.1-R0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
@@ -97,9 +111,9 @@
     </dependency>
   </dependencies>
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <java.version>17</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>

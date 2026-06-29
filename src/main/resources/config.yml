@@ -167,6 +167,16 @@ craftconomy3:
     # 世界组名称（用于确定从哪个世界组扣除金钱）
     world-group: "default"
 
+# HTTP API 配置
+http-api:
+  # 是否启用 HTTP REST API（true/false）
+  enabled: false
+  # 监听端口
+  port: 11387
+  # API 认证密钥（调用 API 时必须传入 X-API-Key 或 Authorization: Bearer <key>）
+  # 强烈建议设置一个复杂且唯一的密钥！
+  key: "change-me-to-a-secure-random-key"
+
 # 日志配置
 logging:
   # 日志级别：INFO, WARNING, SEVERE, FINE, FINER, FINEST
